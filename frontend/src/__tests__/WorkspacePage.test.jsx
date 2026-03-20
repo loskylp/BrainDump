@@ -4,6 +4,9 @@
  * and mock useAuth (WorkspacePage now uses logout).
  * Updated by TASK-008: sidebar placeholder replaced by Sidebar component;
  * notes API is mocked so the test remains unit-level (no network calls).
+ * Updated by TASK-007: editor and preview placeholders replaced by Editor and
+ * Preview components. @uiw/react-codemirror is mocked so CM6 DOM APIs are not
+ * required in the jsdom test environment.
  */
 
 import React from 'react';
@@ -11,6 +14,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import WorkspacePage from '../pages/WorkspacePage.jsx';
+
+// Mock CodeMirror to avoid jsdom incompatibility with CM6 DOM APIs
+vi.mock('@uiw/react-codemirror', () => ({
+  default: vi.fn(({ value, onChange }) => (
+    <textarea
+      data-testid="codemirror-mock"
+      defaultValue={value}
+      onChange={(e) => onChange && onChange(e.target.value)}
+    />
+  )),
+}));
 
 vi.mock('../hooks/useAuth.js', () => ({
   useAuth: vi.fn(),
@@ -63,14 +77,19 @@ describe('WorkspacePage', () => {
     expect(grid.children.length).toBe(3);
   });
 
-  it('renders placeholder text in editor and preview panels', () => {
+  it('renders the Editor and Preview components (not placeholder text) in the editor and preview panels', () => {
     const { container } = renderWorkspacePage();
 
-    // The sidebar placeholder ("Notes will appear here") was replaced by the
-    // Sidebar component in TASK-008. Editor and preview remain as placeholders
-    // until TASK-007 replaces them.
-    expect(container.textContent).toContain('Select or create a note to start editing');
-    expect(container.textContent).toContain('Preview will appear here');
+    // TASK-007: placeholder text is replaced by the Editor component (CodeMirror)
+    // and the Preview component (markdown-it). The editor panel has the
+    // data-testid="editor-panel" wrapper and contains the mocked CodeMirror.
+    // The preview panel has data-testid="preview-panel".
+    expect(container.querySelector('[data-testid="editor-panel"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="preview-panel"]')).not.toBeNull();
+
+    // The placeholder strings must no longer appear
+    expect(container.textContent).not.toContain('Select or create a note to start editing');
+    expect(container.textContent).not.toContain('Preview will appear here');
   });
 
   it('renders the Sidebar component in the sidebar panel', () => {

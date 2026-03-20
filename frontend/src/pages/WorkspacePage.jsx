@@ -10,26 +10,31 @@
  * State managed by this page:
  *   - notes: array of all user note summaries (for the sidebar catalog, TASK-008)
  *   - activeNoteId: UUID of the currently open note (null if none selected)
- *   - content: { title, body } of the currently open note (for editor and preview)
- *
- * Hook wiring:
- *   - useAuth: provides user context and logout function (TASK-004)
- *   - useAutoSave: wired to content and activeNoteId (TASK-012)
- *   - useVersionTimer: wired to content and activeNoteId (TASK-013)
+ *   - activeNote: full note object fetched from GET /api/notes/:id (null if none selected)
+ *   - editorBody: the current content of the editor (string). Initialised from
+ *     activeNote.body when a note is opened; updated on every keystroke.
+ *     This is the single source of truth for the editor and preview panels.
  *
  * Data flow:
  *   Mount -> getNotes() -> populate notes state in Sidebar
- *   Sidebar.onSelectNote -> set activeNoteId -> useEffect fires -> getNote(activeNoteId) -> set activeNote -> Editor renders body
+ *   Sidebar.onSelectNote -> set activeNoteId -> useEffect fires -> getNote(activeNoteId) -> set activeNote -> set editorBody
  *   Sidebar.onCreateNote -> createNote() -> prepend to notes state -> set activeNoteId
- *   Editor.onChange -> update content state -> Preview re-renders
- *   content change -> useAutoSave debounce timer resets
- *   content change -> useVersionTimer idle timer resets
+ *   Editor.onChange -> update editorBody -> Preview re-renders with new value (AC-2, FF-D02)
+ *   editorBody change -> useAutoSave debounce timer resets (TASK-012)
+ *   editorBody change -> useVersionTimer idle timer resets (TASK-013)
+ *
+ * Hook wiring:
+ *   - useAuth: provides user context and logout function (TASK-004)
+ *   - useAutoSave: wired to editorBody and activeNoteId (TASK-012)
+ *   - useVersionTimer: wired to editorBody and activeNoteId (TASK-013)
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.jsx';
 import Sidebar from '../components/common/Sidebar.jsx';
+import Editor from '../components/editor/Editor.jsx';
+import Preview from '../components/editor/Preview.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { getNotes, createNote, getNote } from '../api/notes.js';
 
@@ -37,9 +42,10 @@ import { getNotes, createNote, getNote } from '../api/notes.js';
  * @returns {JSX.Element}
  *
  * @precondition User is authenticated (ProtectedRoute ensures this)
- * @postcondition WorkspaceLayout renders with sidebar, editor area, and preview placeholder
+ * @postcondition WorkspaceLayout renders with sidebar, Editor, and Preview panels
  * @postcondition Sidebar displays all user notes fetched from GET /api/notes on mount
- * @postcondition Selecting a note triggers GET /api/notes/:id and renders body in the editor area
+ * @postcondition Selecting a note triggers GET /api/notes/:id and loads body into Editor
+ * @postcondition Editor.onChange updates editorBody; Preview re-renders with the new value
  * @postcondition Creating a note prepends it to the sidebar list and sets it as active
  */
 function WorkspacePage() {
@@ -58,6 +64,15 @@ function WorkspacePage() {
    * @type {[{title: string, body: string}|null, Function]}
    */
   const [activeNote, setActiveNote] = useState(null);
+
+  /**
+   * Current content of the editor (Markdown source string).
+   * Initialised from activeNote.body when a note is opened.
+   * Updated on every keystroke via handleEditorChange.
+   * This is the single source of truth for both the Editor and Preview panels.
+   * @type {[string, Function]}
+   */
+  const [editorBody, setEditorBody] = useState('');
 
   // ---------------------------------------------------------------------------
   // Load notes on mount
@@ -91,12 +106,13 @@ function WorkspacePage() {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Load note content when activeNoteId changes (AC-3)
+  // Load note content when activeNoteId changes
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
     if (!activeNoteId) {
       setActiveNote(null);
+      setEditorBody('');
       return;
     }
 
@@ -104,7 +120,8 @@ function WorkspacePage() {
 
     /**
      * Fetches the full note content from GET /api/notes/:id and stores it in
-     * activeNote state so the editor area can display the title and body.
+     * activeNote state. Also initialises editorBody from the fetched body so
+     * the Editor displays the persisted content immediately after selection.
      * Silently ignores the result if the component unmounted or the active note
      * changed again before the fetch resolved (cancelled flag).
      */
@@ -113,11 +130,13 @@ function WorkspacePage() {
         const data = await getNote(activeNoteId);
         if (!cancelled) {
           setActiveNote(data.note);
+          setEditorBody(data.note.body || '');
         }
       } catch {
-        // Note not found or network error — leave activeNote as null.
+        // Note not found or network error — leave editor empty.
         if (!cancelled) {
           setActiveNote(null);
+          setEditorBody('');
         }
       }
     }
@@ -175,6 +194,17 @@ function WorkspacePage() {
     }
   }, []);
 
+  /**
+   * Updates editorBody on every keystroke from the Editor component.
+   * This is intentionally unthrottled so the Preview re-renders immediately
+   * without debounce (FF-D02: preview update < 100ms).
+   *
+   * @param {string} newValue - Full Markdown source after the edit
+   */
+  const handleEditorChange = useCallback((newValue) => {
+    setEditorBody(newValue);
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -192,19 +222,13 @@ function WorkspacePage() {
         />
       }
       editor={
-        <div className="p-4 text-text-muted font-mono text-sm">
-          {/* TASK-007: Editor component replaces this placeholder */}
-          {activeNote
-            ? <p>{activeNote.body}</p>
-            : <p>Select or create a note to start editing</p>
-          }
-        </div>
+        <Editor
+          value={editorBody}
+          onChange={handleEditorChange}
+        />
       }
       preview={
-        <div className="p-4 text-text-secondary font-sans text-sm">
-          {/* TASK-007: Preview component replaces this placeholder */}
-          <p className="text-text-muted">Preview will appear here</p>
-        </div>
+        <Preview value={editorBody} />
       }
     />
   );

@@ -9,7 +9,7 @@
  *   - Background: bg-primary (#FFFFFF) -- light, contrasts with dark editor
  *   - Font: system font stack (sans-serif) at 14px for prose
  *   - Monospace font for code blocks and inline code in the rendered output
- *   - Left border: 1px solid border (#DEE2E6) -- panel divider from editor
+ *   - Padding: 16px (space-md token) on all sides
  *   - No box shadows, no rounded corners on the preview container
  *
  * Security:
@@ -19,12 +19,31 @@
  *
  * The rendered HTML is injected via dangerouslySetInnerHTML. This is safe
  * because markdown-it's html: false configuration strips HTML tags.
+ *
+ * The markdown-it instance is created once (module-level singleton) because
+ * it is stateless and expensive to instantiate repeatedly.
  */
 
-// TODO: TASK-007
 import React, { useMemo } from 'react';
+import MarkdownIt from 'markdown-it';
 
 /**
+ * Module-level markdown-it instance. Stateless; safe to share across renders.
+ *
+ * Options:
+ *   html: false      -- raw HTML tags in the source are escaped, not executed (XSS prevention)
+ *   linkify: true    -- bare URLs are converted to clickable links
+ *   typographer: true -- smart quotes and typographic replacements
+ */
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true,
+});
+
+/**
+ * Renders a Markdown string as sanitised HTML in the preview panel.
+ *
  * @param {object} props
  * @param {string} props.value - The Markdown source string to render
  * @returns {JSX.Element}
@@ -35,9 +54,21 @@ import React, { useMemo } from 'react';
  * @postcondition Re-render triggered by any change to props.value
  */
 function Preview({ value }) {
-  // TODO: TASK-007 -- implement using markdown-it with html: false, linkify: true, typographer: true
-  // Use useMemo to avoid re-creating the MarkdownIt instance on each render
-  return null;
+  /**
+   * Converts the Markdown source to HTML. Memoised so the rendering work
+   * runs only when value changes, not on every parent re-render.
+   */
+  const html = useMemo(() => md.render(value || ''), [value]);
+
+  return (
+    <div
+      data-testid="preview-panel"
+      className="h-full p-4 font-sans text-sm text-text-primary overflow-y-auto bg-bg-primary prose-preview"
+      // Safe: html: false ensures raw HTML tags in the source are escaped
+      // eslint-disable-next-line react/no-danger
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }
 
 export default Preview;

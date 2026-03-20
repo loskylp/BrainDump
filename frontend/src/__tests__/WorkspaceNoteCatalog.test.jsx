@@ -9,6 +9,11 @@
  *
  * Both useAuth and the notes API module are mocked.
  * No network calls or database interactions occur.
+ *
+ * Updated by TASK-007: @uiw/react-codemirror is mocked so the Editor component
+ * can mount without real CM6 DOM APIs. The stale assertion that checked for
+ * the body text in a plain <p> tag (pre-TASK-007 placeholder behaviour) is
+ * replaced with a check on the CodeMirror mock's defaultValue.
  */
 
 import React from 'react';
@@ -21,6 +26,19 @@ import WorkspacePage from '../pages/WorkspacePage.jsx';
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
+
+// Mock CodeMirror to avoid jsdom incompatibility with CM6 DOM APIs.
+// The mock renders a <textarea> so tests can check the editor value via
+// container.querySelector('[data-testid="codemirror-mock"]').defaultValue.
+vi.mock('@uiw/react-codemirror', () => ({
+  default: vi.fn(({ value, onChange }) => (
+    <textarea
+      data-testid="codemirror-mock"
+      defaultValue={value}
+      onChange={(e) => onChange && onChange(e.target.value)}
+    />
+  )),
+}));
 
 vi.mock('../hooks/useAuth.js', () => ({
   useAuth: vi.fn(),
@@ -181,7 +199,7 @@ describe('WorkspacePage note catalog (TASK-008)', () => {
       });
     });
 
-    it('displays the body of the selected note in the editor area after clicking', async () => {
+    it('loads the body of the selected note into the CodeMirror editor after clicking', async () => {
       const user = userEvent.setup();
       getNotes.mockResolvedValue({
         notes: [makeNote({ id: 'note-42', title: 'Select Me' })],
@@ -190,14 +208,19 @@ describe('WorkspacePage note catalog (TASK-008)', () => {
         note: { id: 'note-42', title: 'Select Me', body: 'Body of selected note', folder_id: null, updated_at: '2026-03-20T10:00:00.000Z' },
       });
 
-      renderWorkspacePage();
+      const { container } = renderWorkspacePage();
 
       await waitFor(() => screen.getByText('Select Me'));
 
       await user.click(screen.getByText('Select Me'));
 
+      // TASK-007: The body is now held in the CodeMirror editor (via the
+      // controlled editorBody state), not a plain <p> tag. The mock CM6
+      // component exposes the value via defaultValue on the <textarea>.
       await waitFor(() => {
-        expect(screen.getByText('Body of selected note')).toBeTruthy();
+        const cm = container.querySelector('[data-testid="codemirror-mock"]');
+        expect(cm).not.toBeNull();
+        expect(cm.defaultValue).toBe('Body of selected note');
       });
     });
 
