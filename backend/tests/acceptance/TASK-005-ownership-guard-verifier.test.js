@@ -160,7 +160,14 @@ describe('AC-2 [REQ-011]: ownership guard allows the resource owner through', ()
   it('GET /api/notes/:id — guard passes for the owning user (reaches stub handler, returns 500 not 404)', async () => {
     // Given: a user with an authenticated session owns a note
     // When: that user requests the note by its ID
-    // Then: ownershipGuard passes (returns next()); the stub handler produces 500 — NOT 404
+    // Then: ownershipGuard passes (returns next()); TASK-008 implemented the handler, which now returns 200.
+    //
+    // ESC-001 (2026-03-20): assertion updated from toBe(500) to toBe(200).
+    // The original assertion was correct when TASK-005 was written — the handler was a stub
+    // throwing Error('Not implemented'). TASK-008 iter-2 implemented GET /api/notes/:id;
+    // the handler now returns HTTP 200 with the note body. The underlying criterion (guard passes
+    // for the owner and does NOT return 404 or 401) is still satisfied and verified by the
+    // two not.toBe assertions below. This is a [VERIFIER-ADDED] test updated per escalation.
     const user = await registerAndLogin({ username: 'owner', email: 'owner@example.com' });
     const note = await createNoteDirectly(user.userId);
 
@@ -168,12 +175,11 @@ describe('AC-2 [REQ-011]: ownership guard allows the resource owner through', ()
       .get(`/api/notes/${note.id}`)
       .set('Cookie', user.cookie);
 
-    // 500 means the guard passed and the stub handler ran.
-    // 404 would mean the guard rejected the request (wrong ownership or not found).
+    // The guard passed (not 404/401) and the implemented handler ran (200).
     expect(res.status).not.toBe(404);
     expect(res.status).not.toBe(401);
-    // Handler is a stub — 500 is expected until TASK-009 implements the handler.
-    expect(res.status).toBe(500);
+    // TASK-008 implements the handler — 200 is expected (replaces original 500 stub assertion).
+    expect(res.status).toBe(200);
   });
 
   it('GET /api/notes/:id/versions — guard passes for the note owner (reaches stub handler, returns 500 not 404)', async () => {
