@@ -22,12 +22,30 @@
  * @postcondition On reject: response is finalized with status 401
  */
 
-// TODO: TASK-005
 'use strict';
 
+/**
+ * Rejects the request with 401 and a JSON body.
+ *
+ * @param {import('express').Response} res
+ */
+function rejectUnauthenticated(res) {
+  res.status(401).json({ error: 'Authentication required' });
+}
+
+/**
+ * Allows the request to proceed if req.session.userId is truthy.
+ * Sends HTTP 401 and terminates the request otherwise.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
 function authenticate(req, res, next) {
-  // TODO: TASK-005 -- implement
-  throw new Error('Not implemented');
+  if (req.session?.userId) {
+    return next();
+  }
+  rejectUnauthenticated(res);
 }
 
 module.exports = authenticate;

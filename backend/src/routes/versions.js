@@ -63,7 +63,7 @@ router.post('/check-version', ownershipGuard('Note', 'id'), async (req, res, nex
  * Postconditions:
  *   - Returns all versions with no pagination (REQ-016: 100 versions returns all 100)
  */
-router.get('/', ownershipGuard('Note', 'id'), async (req, res, next) => {
+router.get('/versions', ownershipGuard('Note', 'id'), async (req, res, next) => {
   // TODO: TASK-013 -- implement
   next(new Error('Not implemented'));
 });

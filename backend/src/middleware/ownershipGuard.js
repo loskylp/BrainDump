@@ -31,19 +31,47 @@
  * @postcondition On reject: response is finalized with status 404
  */
 
-// TODO: TASK-005
 'use strict';
 
 /**
- * @param {string} modelName
- * @param {string} paramName
- * @returns {import('express').RequestHandler}
+ * Sends a 404 Not Found response. Used for both "does not exist" and
+ * "belongs to another user" cases to prevent resource enumeration (ADR-006).
+ *
+ * @param {import('express').Response} res
+ */
+function sendNotFound(res) {
+  res.status(404).json({ error: 'Not found' });
+}
+
+/**
+ * Creates an ownership-checking middleware for the named Sequelize model.
+ *
+ * @param {string} modelName - Key in the models registry (e.g. 'Note', 'Folder', 'NoteVersion')
+ * @param {string} paramName - The req.params key that holds the resource UUID
+ * @returns {import('express').RequestHandler} Async middleware that verifies ownership
  */
 function ownershipGuard(modelName, paramName) {
-  // TODO: TASK-005 -- implement; load model from require('../models'),
-  // look up resource, verify user_id, attach to req.resource or return 404
-  return function (req, res, next) {
-    throw new Error('Not implemented');
+  return async function ownershipGuardMiddleware(req, res, next) {
+    try {
+      const models = require('../models');
+      const Model = models[modelName];
+      const resourceId = req.params[paramName];
+
+      const resource = await Model.findByPk(resourceId);
+
+      if (!resource) {
+        return sendNotFound(res);
+      }
+
+      if (resource.user_id !== req.session.userId) {
+        return sendNotFound(res);
+      }
+
+      req.resource = resource;
+      next();
+    } catch (err) {
+      next(err);
+    }
   };
 }
 

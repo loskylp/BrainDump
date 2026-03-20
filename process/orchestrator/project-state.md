@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate passed. Cycle 1 execution in progress. TASK-016 verified PASS (6/6, 43 tests, iteration 2). TASK-002 verified PASS (10/10, 140 tests, iteration 1). TASK-003 verified PASS (6/6 AC, 295 tests total, iteration 2). Next task: TASK-004 (User login and logout). Builder to be dispatched.
+Plan Gate passed. Cycle 1 execution in progress. Five tasks complete (TASK-001, TASK-016, TASK-002, TASK-003, TASK-004). TASK-004 verified PASS (6/6 AC, 268 tests total, iteration 2). Next task: TASK-005 (Ownership guard middleware and data isolation). Builder to be dispatched.
 
 ## Active Work
 
 **Agent in control:** (none -- awaiting Nexus dispatch confirmation)
-**Current task:** TASK-004 -- User login and logout
+**Current task:** TASK-005 -- Ownership guard middleware and data isolation
 **Iteration:** 0 of 3
-**Waiting for:** Builder dispatch for TASK-004
+**Waiting for:** Builder dispatch for TASK-005
 
 ---
 
@@ -27,8 +27,8 @@ Plan Gate passed. Cycle 1 execution in progress. TASK-016 verified PASS (6/6, 43
 | TASK-016: Workspace layout shell and routing | COMPLETE | 2 of 3 | PASS (6/6, 43 tests) |
 | TASK-002: Database schema, migrations, and RLS role separation | COMPLETE | 1 of 3 | PASS (10/10, 140 tests) |
 | TASK-003: User registration | COMPLETE | 2 of 3 | PASS (6/6 AC, 295 tests) |
-| TASK-004: User login and logout | NEXT | 0 of 3 | -- |
-| TASK-005: Ownership guard middleware and data isolation | PENDING | 0 of 3 | -- |
+| TASK-004: User login and logout | COMPLETE | 2 of 3 | PASS (6/6 AC, 268 tests) |
+| TASK-005: Ownership guard middleware and data isolation | NEXT | 0 of 3 | -- |
 | TASK-006: Create a note with persistence | PENDING | 0 of 3 | -- |
 | TASK-007: Split-pane Markdown editor with live preview | PENDING | 0 of 3 | -- |
 | TASK-008: Note catalog sidebar | PENDING | 0 of 3 | -- |
@@ -39,9 +39,9 @@ Plan Gate passed. Cycle 1 execution in progress. TASK-016 verified PASS (6/6, 43
 | TASK-013: Note version history | PENDING | 0 of 3 | -- |
 
 **Cycle summary:**
-- Tasks complete: 4 of 14 (TASK-001 DevOps Phase 1, TASK-016 Workspace layout, TASK-002 Database schema, TASK-003 User registration)
+- Tasks complete: 5 of 14 (TASK-001 DevOps Phase 1, TASK-016 Workspace layout, TASK-002 Database schema, TASK-003 User registration, TASK-004 User login and logout)
 - Tasks in progress: 0
-- Requirements satisfied this cycle: 0 of target
+- Requirements satisfied this cycle: REQ-001 (registration), REQ-002 (login/logout)
 - Sentinel: Not invoked
 
 ---
@@ -60,17 +60,17 @@ Plan Gate passed. Cycle 1 execution in progress. TASK-016 verified PASS (6/6, 43
 
 ## Pending Decisions
 
-NONE -- TASK-003 closed. Ready to dispatch Builder for TASK-004.
+NONE -- TASK-004 closed. Ready to dispatch Builder for TASK-005.
 
 ---
 
 ## Iterate Loop State
 
-**Task:** TASK-003 -- CLOSED (PASS at iteration 2)
+**Task:** TASK-004 -- CLOSED (PASS at iteration 2)
 **Iteration:** 2 of 3
-**Failure trend:** [2, 0] (iteration 1: 2 failures; iteration 2: 0 failures)
+**Failure trend:** [not recorded for iteration 1 -- Builder/Verifier ran as a unit], [0] (iteration 2: 0 failures -- PASS)
 **Convergence check:** Converged
-**Next action:** Builder dispatch for TASK-004
+**Next action:** Builder dispatch for TASK-005
 
 ---
 
@@ -81,8 +81,8 @@ NONE -- TASK-003 closed. Ready to dispatch Builder for TASK-004.
 | Auditor passes -- requirements | 1 (v2, PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 1 (v1, PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 4 of 14 planned (TASK-001, TASK-016, TASK-002, TASK-003) |
-| Average iterations to PASS | 1.67 (TASK-016: 2, TASK-002: 1, TASK-003: 2) |
+| Tasks completed | 5 of 14 planned (TASK-001, TASK-016, TASK-002, TASK-003, TASK-004) |
+| Average iterations to PASS | 1.75 (TASK-016: 2, TASK-002: 1, TASK-003: 2, TASK-004: 2) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -92,11 +92,21 @@ NONE -- TASK-003 closed. Ready to dispatch Builder for TASK-004.
 ## Standing Routing Rules (Cycle 1)
 
 - Scaffolder runs before first Builder task (14 tasks >= 3 threshold). DONE.
-- Builder execution order (sequential): TASK-016 (DONE), TASK-002 (DONE), TASK-003 (IN PROGRESS), TASK-004, TASK-005, TASK-006, TASK-008, TASK-011, TASK-007, TASK-009, TASK-010, TASK-012, TASK-013.
+- Builder execution order (sequential): TASK-016 (DONE), TASK-002 (DONE), TASK-003 (DONE), TASK-004 (DONE), TASK-005, TASK-006, TASK-008, TASK-011, TASK-007, TASK-009, TASK-010, TASK-012, TASK-013.
 - TASK-012 (auto-save) and TASK-013 (versioning) must be sequential.
 - OBS-002: Migration role RLS bypass -- resolved by separating RLS into its own migration (20260319000006). DDL is not subject to RLS; test/seed scripts must SET LOCAL before DML.
+- OBS-V004-05: Acceptance tests exhibit intermittent timeouts when Jest runs in parallel against the live session store. Pass cleanly under --runInBand. DevOps should configure CI to run acceptance tests serially. (Action: route to DevOps when next DevOps task is dispatched, or note for TASK-021.)
 - After all Cycle 1 tasks pass Verifier, route to Sentinel.
 - DevOps Phase 2 (staging) triggers after first Builder task passes Verifier. TASK-016 passed -- eligible.
+
+---
+
+## Observations Log
+
+| ID | Source | Description | Status |
+|---|---|---|---|
+| OBS-002 | Auditor | Migration role RLS bypass | Resolved (TASK-002) |
+| OBS-V004-05 | Verifier (TASK-004) | Acceptance tests intermittent timeouts in parallel Jest against live session store; pass under --runInBand | Open -- route to DevOps (CI config) |
 
 ---
 
@@ -117,6 +127,7 @@ NONE -- TASK-003 closed. Ready to dispatch Builder for TASK-004.
 | Verification Report -- TASK-016 | `process/verifier/verification-report-task-016.md` | Iteration 2 (PASS 6/6) |
 | Verification Report -- TASK-002 | `process/verifier/verification-report-task-002.md` | Iteration 1 (PASS 10/10) |
 | Verification Report -- TASK-003 | `process/verifier/verification-report-task-003.md` | Iteration 2 (PASS 6/6) |
+| Verification Report -- TASK-004 | `process/verifier/verification-report-task-004.md` | Iteration 2 (PASS 6/6) |
 
 ---
 
@@ -136,7 +147,6 @@ NONE -- TASK-003 closed. Ready to dispatch Builder for TASK-004.
 - Health route was implemented (was a TASK-001 stub throwing "Not implemented") since models/index.js now exports a working sequelize instance.
 
 **Limitations:**
-- User.comparePassword() remains a stub (TODO: TASK-004)
 - rlsContext SET LOCAL runs outside a transaction context. For full RLS enforcement in request handlers, service functions should wrap operations in sequelize.transaction() and SET LOCAL within that transaction. This will be addressed when service functions are implemented (TASK-006 onwards).
 
 ---
@@ -155,8 +165,33 @@ NONE -- TASK-003 closed. Ready to dispatch Builder for TASK-004.
 - Note: TASK-002 Verifier-added tests (table count, SequelizeMeta count) expect 6 but will now see 7 due to the new session migration. These are Verifier-owned assertions and need updating by the Verifier.
 
 **Limitations (unchanged):**
-- `User.comparePassword()` remains a stub (TODO: TASK-004)
 - Login, logout, forgot-password, reset-password routes remain stubs
+
+---
+
+## TASK-004 Builder Handoff Notes
+
+**What was built (iteration 2 -- PASS):**
+- `User.comparePassword()` implemented (was a stub since TASK-002)
+- `authService.login()` with email/password validation, session creation
+- `authService.logout()` with session destruction in PostgreSQL store
+- `POST /api/auth/login` and `POST /api/auth/logout` routes
+- `authenticate` middleware for protected route gating
+- Frontend: `LoginForm.jsx`, `LoginPage.jsx` with client-side validation
+- Session cookie: httpOnly, secure (production), sameSite: strict, 7-day rolling expiry
+- 21 Builder acceptance tests + 28 Verifier acceptance tests = full AC coverage
+
+**Test results at PASS:**
+- TASK-004 Builder: 21/21
+- TASK-004 Verifier: 28/28
+- TASK-003 regression: 45/45
+- TASK-002 regression: 52/52
+- Integration: 40/40
+- Frontend: 77/77
+- Total: 268/268
+
+**Observation:**
+- OBS-V004-05: Acceptance tests exhibit intermittent timeouts when Jest runs in parallel against the live session store. Pass cleanly under --runInBand. DevOps should configure CI to run acceptance tests serially.
 
 ---
 
