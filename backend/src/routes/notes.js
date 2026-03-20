@@ -10,7 +10,7 @@
  * Version check path: POST /api/notes/:id/check-version (in versions.js)
  */
 
-// TODO: TASK-006 (POST), TASK-009 (GET collection, GET single, PUT), TASK-010 (DELETE)
+// TODO: TASK-009 (GET collection, GET single, PUT), TASK-010 (DELETE)
 'use strict';
 
 const express = require('express');
@@ -58,8 +58,16 @@ router.get('/', async (req, res, next) => {
  *   - NoteVersion row with version_number=1 persisted in same transaction
  */
 router.post('/', async (req, res, next) => {
-  // TODO: TASK-006 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const { title = '', folderId } = req.body;
+    const note = await noteService.createNote(req.session.userId, { title, folderId });
+    res.status(201).json({ note });
+  } catch (err) {
+    if (err.message === 'FOLDER_NOT_FOUND') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    next(err);
+  }
 });
 
 /**

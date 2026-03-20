@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate passed. Cycle 1 execution in progress. Five tasks complete (TASK-001, TASK-016, TASK-002, TASK-003, TASK-004). TASK-004 verified PASS (6/6 AC, 268 tests total, iteration 2). Next task: TASK-005 (Ownership guard middleware and data isolation). Builder to be dispatched.
+Plan Gate passed. Cycle 1 execution in progress. Six tasks complete (TASK-001, TASK-016, TASK-002, TASK-003, TASK-004, TASK-005). TASK-005 verified PASS (7/7 AC, 335 tests total, iteration 2). Next task: TASK-006 (Create a note with persistence). Builder to be dispatched.
 
 ## Active Work
 
 **Agent in control:** (none -- awaiting Nexus dispatch confirmation)
-**Current task:** TASK-005 -- Ownership guard middleware and data isolation
+**Current task:** TASK-006 -- Create a note with persistence
 **Iteration:** 0 of 3
-**Waiting for:** Builder dispatch for TASK-005
+**Waiting for:** Builder dispatch for TASK-006
 
 ---
 
@@ -28,8 +28,8 @@ Plan Gate passed. Cycle 1 execution in progress. Five tasks complete (TASK-001, 
 | TASK-002: Database schema, migrations, and RLS role separation | COMPLETE | 1 of 3 | PASS (10/10, 140 tests) |
 | TASK-003: User registration | COMPLETE | 2 of 3 | PASS (6/6 AC, 295 tests) |
 | TASK-004: User login and logout | COMPLETE | 2 of 3 | PASS (6/6 AC, 268 tests) |
-| TASK-005: Ownership guard middleware and data isolation | NEXT | 0 of 3 | -- |
-| TASK-006: Create a note with persistence | PENDING | 0 of 3 | -- |
+| TASK-005: Ownership guard middleware and data isolation | COMPLETE | 2 of 3 | PASS (7/7 AC, 335 tests) |
+| TASK-006: Create a note with persistence | NEXT | 0 of 3 | -- |
 | TASK-007: Split-pane Markdown editor with live preview | PENDING | 0 of 3 | -- |
 | TASK-008: Note catalog sidebar | PENDING | 0 of 3 | -- |
 | TASK-009: Edit a note (API and editor integration) | PENDING | 0 of 3 | -- |
@@ -39,9 +39,9 @@ Plan Gate passed. Cycle 1 execution in progress. Five tasks complete (TASK-001, 
 | TASK-013: Note version history | PENDING | 0 of 3 | -- |
 
 **Cycle summary:**
-- Tasks complete: 5 of 14 (TASK-001 DevOps Phase 1, TASK-016 Workspace layout, TASK-002 Database schema, TASK-003 User registration, TASK-004 User login and logout)
+- Tasks complete: 6 of 14 (TASK-001 DevOps Phase 1, TASK-016 Workspace layout, TASK-002 Database schema, TASK-003 User registration, TASK-004 User login and logout, TASK-005 Ownership guard)
 - Tasks in progress: 0
-- Requirements satisfied this cycle: REQ-001 (registration), REQ-002 (login/logout)
+- Requirements satisfied this cycle: REQ-001 (registration), REQ-002 (login/logout), REQ-011 (data isolation)
 - Sentinel: Not invoked
 
 ---
@@ -60,17 +60,17 @@ Plan Gate passed. Cycle 1 execution in progress. Five tasks complete (TASK-001, 
 
 ## Pending Decisions
 
-NONE -- TASK-004 closed. Ready to dispatch Builder for TASK-005.
+NONE -- TASK-005 closed. Ready to dispatch Builder for TASK-006.
 
 ---
 
 ## Iterate Loop State
 
-**Task:** TASK-004 -- CLOSED (PASS at iteration 2)
+**Task:** TASK-005 -- CLOSED (PASS at iteration 2)
 **Iteration:** 2 of 3
-**Failure trend:** [not recorded for iteration 1 -- Builder/Verifier ran as a unit], [0] (iteration 2: 0 failures -- PASS)
+**Failure trend:** [iteration 1], [0] (iteration 2: 0 failures -- PASS)
 **Convergence check:** Converged
-**Next action:** Builder dispatch for TASK-005
+**Next action:** Builder dispatch for TASK-006
 
 ---
 
@@ -81,8 +81,8 @@ NONE -- TASK-004 closed. Ready to dispatch Builder for TASK-005.
 | Auditor passes -- requirements | 1 (v2, PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 1 (v1, PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 5 of 14 planned (TASK-001, TASK-016, TASK-002, TASK-003, TASK-004) |
-| Average iterations to PASS | 1.75 (TASK-016: 2, TASK-002: 1, TASK-003: 2, TASK-004: 2) |
+| Tasks completed | 6 of 14 planned (TASK-001, TASK-016, TASK-002, TASK-003, TASK-004, TASK-005) |
+| Average iterations to PASS | 1.8 (TASK-016: 2, TASK-002: 1, TASK-003: 2, TASK-004: 2, TASK-005: 2) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -92,7 +92,7 @@ NONE -- TASK-004 closed. Ready to dispatch Builder for TASK-005.
 ## Standing Routing Rules (Cycle 1)
 
 - Scaffolder runs before first Builder task (14 tasks >= 3 threshold). DONE.
-- Builder execution order (sequential): TASK-016 (DONE), TASK-002 (DONE), TASK-003 (DONE), TASK-004 (DONE), TASK-005, TASK-006, TASK-008, TASK-011, TASK-007, TASK-009, TASK-010, TASK-012, TASK-013.
+- Builder execution order (sequential): TASK-016 (DONE), TASK-002 (DONE), TASK-003 (DONE), TASK-004 (DONE), TASK-005 (DONE), TASK-006, TASK-008, TASK-011, TASK-007, TASK-009, TASK-010, TASK-012, TASK-013.
 - TASK-012 (auto-save) and TASK-013 (versioning) must be sequential.
 - OBS-002: Migration role RLS bypass -- resolved by separating RLS into its own migration (20260319000006). DDL is not subject to RLS; test/seed scripts must SET LOCAL before DML.
 - OBS-V004-05: Acceptance tests exhibit intermittent timeouts when Jest runs in parallel against the live session store. Pass cleanly under --runInBand. DevOps should configure CI to run acceptance tests serially. (Action: route to DevOps when next DevOps task is dispatched, or note for TASK-021.)
@@ -128,6 +128,7 @@ NONE -- TASK-004 closed. Ready to dispatch Builder for TASK-005.
 | Verification Report -- TASK-002 | `process/verifier/verification-report-task-002.md` | Iteration 1 (PASS 10/10) |
 | Verification Report -- TASK-003 | `process/verifier/verification-report-task-003.md` | Iteration 2 (PASS 6/6) |
 | Verification Report -- TASK-004 | `process/verifier/verification-report-task-004.md` | Iteration 2 (PASS 6/6) |
+| Verification Report -- TASK-005 | `process/verifier/verification-report-task-005.md` | Iteration 2 (PASS 7/7) |
 
 ---
 
@@ -192,6 +193,26 @@ NONE -- TASK-004 closed. Ready to dispatch Builder for TASK-005.
 
 **Observation:**
 - OBS-V004-05: Acceptance tests exhibit intermittent timeouts when Jest runs in parallel against the live session store. Pass cleanly under --runInBand. DevOps should configure CI to run acceptance tests serially.
+
+---
+
+## TASK-005 Builder Handoff Notes
+
+**What was built (iteration 2 -- PASS):**
+- `ownershipGuard` middleware applied to all routes under `/api/notes`, `/api/folders`, `/api/versions`
+- For routes with resource ID parameter: middleware loads the resource and verifies `resource.user_id === req.session.userId`; mismatch returns 404 (not 403)
+- For list/search routes: query includes `WHERE user_id = req.session.userId`
+- Sequelize default scopes on Note, Folder, and NoteVersion models add `WHERE user_id = :currentUserId`
+- Unit tests for authenticate and ownershipGuard middleware: 22/22
+- RLS validation tests confirm database-level blocking when app-level filter is bypassed
+
+**Test results at PASS:**
+- TASK-005 Verifier: 34/34
+- TASK-005 Builder: 33/33
+- Unit tests (authenticate + ownershipGuard): 22/22
+- Regression (TASK-002/003/004 + integration): 169/169
+- Frontend: 77/77
+- Total: 335/335
 
 ---
 

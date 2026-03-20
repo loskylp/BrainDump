@@ -8,21 +8,25 @@
  * and the database layer (RLS context set by rlsContext middleware, ADR-006).
  */
 
-// TODO: TASK-006 (createNote), TASK-009 (getNotes, getNote, updateNote), TASK-010 (deleteNote)
+// TODO: TASK-009 (getNotes, getNote, updateNote), TASK-010 (deleteNote)
 'use strict';
 
-const { Note, NoteVersion } = require('../models');
+const { Note, NoteVersion, Folder, sequelize } = require('../models');
 
 /**
  * Creates a new note with an initial version.
  *
- * The initial version (version_number = 1) is created atomically with the
- * note row using a database transaction (ADR-004 edge case: "new note with
- * no versions always has at least one version entry").
+ * Validates folder ownership when folderId is provided, then opens a single
+ * database transaction that:
+ *   1. Executes SET LOCAL app.current_user_id to activate RLS for the transaction
+ *   2. Inserts the note row (body defaults to empty string)
+ *   3. Inserts a NoteVersion row with version_number=1 as the initial snapshot
+ *
+ * (ADR-004 edge case: "new note with no versions always has at least one version entry")
  *
  * @param {string} userId - UUID of the authenticated user (from req.session.userId)
  * @param {object} params
- * @param {string} params.title - Note title (may be empty string, max 500 chars)
+ * @param {string} [params.title=''] - Note title (may be empty string, max 500 chars)
  * @param {string} [params.folderId] - Optional UUID of the target folder
  * @returns {Promise<Note>} The created Note instance with id, title, body, created_at, updated_at
  * @throws {Error} With message 'FOLDER_NOT_FOUND' if folderId is provided but does not exist or belong to userId
@@ -31,9 +35,47 @@ const { Note, NoteVersion } = require('../models');
  * @postcondition Note row is persisted with body='', the given title, and auto-generated UUID
  * @postcondition NoteVersion row with version_number=1 is persisted in the same transaction
  */
-async function createNote(userId, { title, folderId }) {
-  // TODO: TASK-006 -- implement
-  throw new Error('Not implemented');
+async function createNote(userId, { title: rawTitle, folderId: rawFolderId } = {}) {
+  const title = rawTitle !== undefined ? rawTitle : '';
+  const folderId = rawFolderId || null;
+
+  if (folderId !== null) {
+    const folder = await Folder.scope({ method: ['forUser', userId] }).findOne({
+      where: { id: folderId },
+    });
+    if (!folder) {
+      throw new Error('FOLDER_NOT_FOUND');
+    }
+  }
+
+  return sequelize.transaction(async (transaction) => {
+    await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+      replacements: { userId },
+      transaction,
+    });
+
+    const note = await Note.create(
+      {
+        user_id: userId,
+        title,
+        body: '',
+        folder_id: folderId,
+      },
+      { transaction }
+    );
+
+    await NoteVersion.create(
+      {
+        note_id: note.id,
+        title: note.title,
+        body: note.body,
+        version_number: 1,
+      },
+      { transaction }
+    );
+
+    return note;
+  });
 }
 
 /**
