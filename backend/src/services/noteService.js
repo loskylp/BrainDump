@@ -8,7 +8,7 @@
  * and the database layer (RLS context set by rlsContext middleware, ADR-006).
  */
 
-// TODO: TASK-009 (getNotes, getNote, updateNote), TASK-010 (deleteNote)
+// TODO: TASK-009 (updateNote), TASK-010 (deleteNote)
 'use strict';
 
 const { Note, NoteVersion, Folder, sequelize } = require('../models');
@@ -81,20 +81,31 @@ async function createNote(userId, { title: rawTitle, folderId: rawFolderId } = {
 /**
  * Returns all notes belonging to the given user, sorted by updated_at DESC.
  *
+ * Body is excluded from the result set for list performance (REQ-008: catalog
+ * only needs title and date for each entry; full body is loaded on note open).
+ *
  * @param {string} userId - UUID of the authenticated user
- * @returns {Promise<Note[]>} Array of Note instances (id, title, updated_at, folder_id only -- no body for list performance)
+ * @returns {Promise<Note[]>} Array of Note instances with id, title, updated_at,
+ *   folder_id -- body is intentionally excluded for list performance
  *
  * @precondition userId references a valid user
  * @postcondition Returns only notes where user_id = userId (RLS double-enforced)
  * @postcondition Empty array returned when the user has no notes
+ * @postcondition Results are sorted by updated_at DESC (newest first)
  */
 async function getNotes(userId) {
-  // TODO: TASK-009 -- implement
-  throw new Error('Not implemented');
+  return Note.scope({ method: ['forUser', userId] }).findAll({
+    attributes: ['id', 'title', 'updated_at', 'folder_id'],
+    order: [['updated_at', 'DESC']],
+  });
 }
 
 /**
  * Returns a single note by ID, verified to belong to the given user.
+ *
+ * Uses the forUser Sequelize scope so the query is constrained to notes
+ * owned by userId at the application layer (RLS provides the DB-layer
+ * enforcement via rlsContext middleware, ADR-006).
  *
  * @param {string} noteId - UUID of the requested note
  * @param {string} userId - UUID of the authenticated user
@@ -102,11 +113,19 @@ async function getNotes(userId) {
  * @throws {Error} With message 'NOT_FOUND' if note does not exist or belongs to a different user
  *
  * @precondition userId references a valid user
+ * @precondition noteId is a valid UUID string
  * @postcondition Returned note has user_id === userId
  */
 async function getNote(noteId, userId) {
-  // TODO: TASK-009 -- implement
-  throw new Error('Not implemented');
+  const note = await Note.scope({ method: ['forUser', userId] }).findOne({
+    where: { id: noteId },
+  });
+
+  if (!note) {
+    throw new Error('NOT_FOUND');
+  }
+
+  return note;
 }
 
 /**

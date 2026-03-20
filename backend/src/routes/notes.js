@@ -10,7 +10,7 @@
  * Version check path: POST /api/notes/:id/check-version (in versions.js)
  */
 
-// TODO: TASK-009 (GET collection, GET single, PUT), TASK-010 (DELETE)
+// TODO: TASK-009 (PUT), TASK-010 (DELETE)
 'use strict';
 
 const express = require('express');
@@ -37,8 +37,12 @@ router.use(rlsContext);
  *   - Empty array when user has no notes (not 404)
  */
 router.get('/', async (req, res, next) => {
-  // TODO: TASK-009 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const notes = await noteService.getNotes(req.session.userId);
+    res.json({ notes });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
@@ -78,9 +82,10 @@ router.post('/', async (req, res, next) => {
  * @returns {200} { note: { id, title, body, folder_id, created_at, updated_at } }
  * @returns {404} { error: "Not found" } -- note does not exist or belongs to another user
  */
-router.get('/:id', ownershipGuard('Note', 'id'), async (req, res, next) => {
-  // TODO: TASK-009 -- implement; req.resource is the loaded Note (set by ownershipGuard)
-  next(new Error('Not implemented'));
+router.get('/:id', ownershipGuard('Note', 'id'), async (req, res, _next) => {
+  // ownershipGuard has already verified ownership and attached the Note instance
+  // to req.resource. Return it directly — no further service call needed.
+  res.json({ note: req.resource });
 });
 
 /**

@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate passed. Cycle 1 execution in progress. Six tasks complete (TASK-001, TASK-016, TASK-002, TASK-003, TASK-004, TASK-005). TASK-005 verified PASS (7/7 AC, 335 tests total, iteration 2). Next task: TASK-006 (Create a note with persistence). Builder to be dispatched.
+Plan Gate passed. Cycle 1 execution in progress. Seven tasks complete (TASK-001, TASK-016, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006). TASK-006 verified PASS (6/6 AC, 419 tests total, iteration 1). Next task: TASK-008 (Note catalog sidebar). Builder to be dispatched.
 
 ## Active Work
 
 **Agent in control:** (none -- awaiting Nexus dispatch confirmation)
-**Current task:** TASK-006 -- Create a note with persistence
+**Current task:** TASK-008 -- Note catalog sidebar
 **Iteration:** 0 of 3
-**Waiting for:** Builder dispatch for TASK-006
+**Waiting for:** Builder dispatch for TASK-008
 
 ---
 
@@ -29,9 +29,9 @@ Plan Gate passed. Cycle 1 execution in progress. Six tasks complete (TASK-001, T
 | TASK-003: User registration | COMPLETE | 2 of 3 | PASS (6/6 AC, 295 tests) |
 | TASK-004: User login and logout | COMPLETE | 2 of 3 | PASS (6/6 AC, 268 tests) |
 | TASK-005: Ownership guard middleware and data isolation | COMPLETE | 2 of 3 | PASS (7/7 AC, 335 tests) |
-| TASK-006: Create a note with persistence | NEXT | 0 of 3 | -- |
+| TASK-006: Create a note with persistence | COMPLETE | 1 of 3 | PASS (6/6 AC, 419 tests) |
 | TASK-007: Split-pane Markdown editor with live preview | PENDING | 0 of 3 | -- |
-| TASK-008: Note catalog sidebar | PENDING | 0 of 3 | -- |
+| TASK-008: Note catalog sidebar | NEXT | 0 of 3 | -- |
 | TASK-009: Edit a note (API and editor integration) | PENDING | 0 of 3 | -- |
 | TASK-010: Delete a note | PENDING | 0 of 3 | -- |
 | TASK-011: Public landing page | PENDING | 0 of 3 | -- |
@@ -39,9 +39,9 @@ Plan Gate passed. Cycle 1 execution in progress. Six tasks complete (TASK-001, T
 | TASK-013: Note version history | PENDING | 0 of 3 | -- |
 
 **Cycle summary:**
-- Tasks complete: 6 of 14 (TASK-001 DevOps Phase 1, TASK-016 Workspace layout, TASK-002 Database schema, TASK-003 User registration, TASK-004 User login and logout, TASK-005 Ownership guard)
+- Tasks complete: 7 of 14 (TASK-001 DevOps Phase 1, TASK-016 Workspace layout, TASK-002 Database schema, TASK-003 User registration, TASK-004 User login and logout, TASK-005 Ownership guard, TASK-006 Create note)
 - Tasks in progress: 0
-- Requirements satisfied this cycle: REQ-001 (registration), REQ-002 (login/logout), REQ-011 (data isolation)
+- Requirements satisfied this cycle: REQ-001 (registration), REQ-002 (login/logout), REQ-011 (data isolation), REQ-004 (create note), REQ-012 (timestamps)
 - Sentinel: Not invoked
 
 ---
@@ -60,17 +60,17 @@ Plan Gate passed. Cycle 1 execution in progress. Six tasks complete (TASK-001, T
 
 ## Pending Decisions
 
-NONE -- TASK-005 closed. Ready to dispatch Builder for TASK-006.
+NONE -- TASK-006 closed. Ready to dispatch Builder for TASK-008.
 
 ---
 
 ## Iterate Loop State
 
-**Task:** TASK-005 -- CLOSED (PASS at iteration 2)
-**Iteration:** 2 of 3
-**Failure trend:** [iteration 1], [0] (iteration 2: 0 failures -- PASS)
+**Task:** TASK-006 -- CLOSED (PASS at iteration 1)
+**Iteration:** 1 of 3
+**Failure trend:** [0] (iteration 1: 0 failures -- PASS)
 **Convergence check:** Converged
-**Next action:** Builder dispatch for TASK-006
+**Next action:** Builder dispatch for TASK-008
 
 ---
 
@@ -81,8 +81,8 @@ NONE -- TASK-005 closed. Ready to dispatch Builder for TASK-006.
 | Auditor passes -- requirements | 1 (v2, PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 1 (v1, PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 6 of 14 planned (TASK-001, TASK-016, TASK-002, TASK-003, TASK-004, TASK-005) |
-| Average iterations to PASS | 1.8 (TASK-016: 2, TASK-002: 1, TASK-003: 2, TASK-004: 2, TASK-005: 2) |
+| Tasks completed | 7 of 14 planned (TASK-001, TASK-016, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006) |
+| Average iterations to PASS | 1.7 (TASK-016: 2, TASK-002: 1, TASK-003: 2, TASK-004: 2, TASK-005: 2, TASK-006: 1) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -92,7 +92,7 @@ NONE -- TASK-005 closed. Ready to dispatch Builder for TASK-006.
 ## Standing Routing Rules (Cycle 1)
 
 - Scaffolder runs before first Builder task (14 tasks >= 3 threshold). DONE.
-- Builder execution order (sequential): TASK-016 (DONE), TASK-002 (DONE), TASK-003 (DONE), TASK-004 (DONE), TASK-005 (DONE), TASK-006, TASK-008, TASK-011, TASK-007, TASK-009, TASK-010, TASK-012, TASK-013.
+- Builder execution order (sequential): TASK-016 (DONE), TASK-002 (DONE), TASK-003 (DONE), TASK-004 (DONE), TASK-005 (DONE), TASK-006 (DONE), TASK-008, TASK-011, TASK-007, TASK-009, TASK-010, TASK-012, TASK-013.
 - TASK-012 (auto-save) and TASK-013 (versioning) must be sequential.
 - OBS-002: Migration role RLS bypass -- resolved by separating RLS into its own migration (20260319000006). DDL is not subject to RLS; test/seed scripts must SET LOCAL before DML.
 - OBS-V004-05: Acceptance tests exhibit intermittent timeouts when Jest runs in parallel against the live session store. Pass cleanly under --runInBand. DevOps should configure CI to run acceptance tests serially. (Action: route to DevOps when next DevOps task is dispatched, or note for TASK-021.)
@@ -129,6 +129,7 @@ NONE -- TASK-005 closed. Ready to dispatch Builder for TASK-006.
 | Verification Report -- TASK-003 | `process/verifier/verification-report-task-003.md` | Iteration 2 (PASS 6/6) |
 | Verification Report -- TASK-004 | `process/verifier/verification-report-task-004.md` | Iteration 2 (PASS 6/6) |
 | Verification Report -- TASK-005 | `process/verifier/verification-report-task-005.md` | Iteration 2 (PASS 7/7) |
+| Verification Report -- TASK-006 | `process/verifier/verification-report-task-006.md` | Iteration 1 (PASS 6/6) |
 
 ---
 
@@ -213,6 +214,25 @@ NONE -- TASK-005 closed. Ready to dispatch Builder for TASK-006.
 - Regression (TASK-002/003/004 + integration): 169/169
 - Frontend: 77/77
 - Total: 335/335
+
+---
+
+## TASK-006 Builder Handoff Notes
+
+**What was built (iteration 1 -- PASS):**
+- `POST /api/notes` endpoint: creates a note with title, empty body, auto-generated UUID, timestamps
+- `noteService.create()` with transaction-scoped RLS (`SET LOCAL app.current_user_id`)
+- Frontend: "New Note" button in workspace triggers creation and navigates to editor
+- Ownership guard applied; response returns the created note with 201 status
+- AC-3 atomicity (FF-D16) verified against live DB -- note creation is atomic within a transaction
+
+**Test results at PASS:**
+- TASK-006 unit + acceptance: 84/84
+- Backend regression: 258/258
+- Frontend: 77/77
+- Total: 419/419
+
+**Observations:** None.
 
 ---
 

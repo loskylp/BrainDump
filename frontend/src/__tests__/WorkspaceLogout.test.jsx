@@ -3,6 +3,9 @@
  *
  * Verifies that the workspace sidebar includes a logout button that calls
  * the logout function from useAuth and navigates to /login.
+ *
+ * Updated by TASK-008: notes API mocked so the test remains unit-level
+ * (WorkspacePage now calls getNotes on mount).
  */
 
 import React from 'react';
@@ -16,7 +19,16 @@ vi.mock('../hooks/useAuth.js', () => ({
   useAuth: vi.fn(),
 }));
 
+vi.mock('../api/notes.js', () => ({
+  getNotes: vi.fn(),
+  createNote: vi.fn(),
+  getNote: vi.fn(),
+  updateNote: vi.fn(),
+  deleteNote: vi.fn(),
+}));
+
 import { useAuth } from '../hooks/useAuth.js';
+import { getNotes } from '../api/notes.js';
 
 function renderWorkspacePage() {
   return render(
@@ -41,6 +53,7 @@ describe('WorkspacePage logout', () => {
       login: vi.fn(),
       logout: mockLogout,
     });
+    getNotes.mockResolvedValue({ notes: [] });
   });
 
   it('renders a logout button', () => {
