@@ -1,0 +1,16 @@
+/*
+ * Global CSS entry point.
+ *
+ * Injects Tailwind's three directive layers into the stylesheet:
+ *   @tailwind base        -- Preflight reset + CSS custom properties
+ *   @tailwind components  -- Component-level utility classes
+ *   @tailwind utilities   -- Utility classes generated from tailwind.config.js tokens
+ *
+ * No custom CSS should be added here unless it cannot be expressed as Tailwind
+ * utilities. ADR-008 anti-pattern: do not add custom colors, font sizes, or
+ * spacing values that override or extend the design token system.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

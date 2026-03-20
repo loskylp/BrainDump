@@ -1,0 +1,96 @@
+version: "3.9"
+
+# BrainDump -- local development environment
+#
+# Usage:
+#   cp .env.example .env
+#   docker-compose -f docker-compose.dev.yml up
+#
+# The backend and frontend both support hot-reload.
+# The PostgreSQL data volume persists between restarts.
+# Email is delivered to the console (stdout) -- no real SMTP required.
+
+services:
+
+  # ─── PostgreSQL ───────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: braindump_dev
+      POSTGRES_PASSWORD: braindump_dev
+      POSTGRES_DB: braindump_dev
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      # Exposed to localhost so developers can connect directly with psql or a GUI client.
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U braindump_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── Backend (Express + Sequelize) ────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: backend-dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Override any .env values that must point at the Compose service name.
+      POSTGRES_URL: postgresql://braindump_dev:braindump_dev@postgres:5432/braindump_dev
+      NODE_ENV: development
+      EMAIL_PROVIDER: console
+    volumes:
+      # Mount source for hot-reload; node_modules are left inside the container.
+      - ./backend:/app/backend
+      - /app/backend/node_modules
+    ports:
+      - "3000:3000"
+    command: >
+      sh -c "
+        echo 'Running migrations...' &&
+        npx sequelize-cli db:migrate &&
+        echo 'Migrations complete. Starting server with nodemon...' &&
+        npx nodemon --watch backend/src --ext js,json backend/src/server.js
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  # ─── Frontend (React + Vite HMR) ─────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: frontend-dev
+    restart: unless-stopped
+    depends_on:
+      - backend
+    env_file:
+      - .env
+    environment:
+      # Vite proxies /api/* to the backend service; this tells Vite where it is.
+      VITE_API_BASE_URL: ""
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+    ports:
+      # Vite dev server -- open http://localhost:5173 in the browser.
+      - "5173:5173"
+    command: >
+      sh -c "cd /app/frontend && npm run dev -- --host 0.0.0.0"
+
+volumes:
+  postgres_dev_data:
+    driver: local

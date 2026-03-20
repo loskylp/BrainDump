@@ -70,16 +70,17 @@ describe('AC-1 [REQ-012]: All 5 tables exist after migration', () => {
     expect(rows[0].exists).toBe(false);
   });
 
-  test('[VERIFIER-ADDED] exactly 6 tables exist in public schema (5 app + SequelizeMeta)', async () => {
+  test('[VERIFIER-ADDED] exactly 7 tables exist in public schema (5 app + SequelizeMeta + session)', async () => {
     // Given: a cleanly migrated database
     // When: all base tables in the public schema are counted
-    // Then: exactly 6 — 5 application tables plus SequelizeMeta
+    // Then: exactly 7 are present — 5 application tables plus SequelizeMeta plus the session table
+    //       (added by TASK-003 migration 20260319000007-create-sessions.js)
     const [rows] = await sequelize.query(
       `SELECT COUNT(*) AS count
        FROM information_schema.tables
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
     );
-    expect(parseInt(rows[0].count, 10)).toBe(6);
+    expect(parseInt(rows[0].count, 10)).toBe(7);
   });
 });
 
@@ -380,12 +381,12 @@ describe('AC-6 [REQ-011/REQ-012]: Migration role not blocked by RLS (OBS-002)', 
     expect(parseInt(rows[0].count, 10)).toBe(5);
   });
 
-  test('[VERIFIER-ADDED] SequelizeMeta records all 6 migration files as applied', async () => {
-    // Given: all 6 migration files have been run by sequelize db:migrate
+  test('[VERIFIER-ADDED] SequelizeMeta records all 7 migration files as applied', async () => {
+    // Given: all 7 migration files have been run (6 TASK-002 migrations + 1 TASK-003 session migration)
     // When: SequelizeMeta is queried
-    // Then: 6 entries exist — no migration was skipped or failed silently
+    // Then: 7 entries exist — no migration was skipped or failed silently
     const [rows] = await sequelize.query('SELECT name FROM "SequelizeMeta" ORDER BY name');
-    expect(rows.length).toBe(6);
+    expect(rows.length).toBe(7);
     const names = rows.map(r => r.name);
     expect(names.some(n => n.includes('create-users'))).toBe(true);
     expect(names.some(n => n.includes('create-folders'))).toBe(true);
@@ -393,6 +394,7 @@ describe('AC-6 [REQ-011/REQ-012]: Migration role not blocked by RLS (OBS-002)', 
     expect(names.some(n => n.includes('note-versions'))).toBe(true);
     expect(names.some(n => n.includes('password-reset'))).toBe(true);
     expect(names.some(n => n.includes('enable-rls'))).toBe(true);
+    expect(names.some(n => n.includes('create-sessions'))).toBe(true);
   });
 });
 

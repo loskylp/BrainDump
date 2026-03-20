@@ -1,0 +1,29 @@
+# Dockerfile.dev -- development only
+# Used by docker-compose.dev.yml.
+# Source is mounted as a volume; the image provides the runtime and tooling.
+# NOT used for CI or production -- see Dockerfile for the production multi-stage build.
+
+# ─── Backend dev stage ────────────────────────────────────────────────────
+FROM node:20-alpine AS backend-dev
+
+WORKDIR /app/backend
+
+# Install dependencies from the lock file before the volume mount overwrites
+# the source directory, so node_modules is baked into the layer.
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci
+
+# nodemon is started by docker-compose.dev.yml command, not CMD here,
+# so the container can be used with any entrypoint override.
+CMD ["sh"]
+
+
+# ─── Frontend dev stage ───────────────────────────────────────────────────
+FROM node:20-alpine AS frontend-dev
+
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+CMD ["sh"]
