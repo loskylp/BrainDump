@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate passed. Cycle 1 execution in progress. TASK-016 verified PASS (6/6, 43 tests, iteration 2). TASK-002 verified PASS (10/10, 140 tests, iteration 1). TASK-003 Verifier iteration 1 returned FAIL (5/6 AC pass, AC-6 frontend test infra broken, TASK-002 regression from session table). Builder iteration 2 complete -- both failures addressed. Verifier iteration 2 dispatched.
+Plan Gate passed. Cycle 1 execution in progress. TASK-016 verified PASS (6/6, 43 tests, iteration 2). TASK-002 verified PASS (10/10, 140 tests, iteration 1). TASK-003 verified PASS (6/6 AC, 295 tests total, iteration 2). Next task: TASK-004 (User login and logout). Builder to be dispatched.
 
 ## Active Work
 
-**Agent in control:** Verifier
-**Current task:** TASK-003 -- User registration
-**Iteration:** 2 of 3
-**Waiting for:** Verifier iteration 2 completion
+**Agent in control:** (none -- awaiting Nexus dispatch confirmation)
+**Current task:** TASK-004 -- User login and logout
+**Iteration:** 0 of 3
+**Waiting for:** Builder dispatch for TASK-004
 
 ---
 
@@ -26,8 +26,8 @@ Plan Gate passed. Cycle 1 execution in progress. TASK-016 verified PASS (6/6, 43
 | TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | COMPLETE | -- | -- (DevOps, not Builder) |
 | TASK-016: Workspace layout shell and routing | COMPLETE | 2 of 3 | PASS (6/6, 43 tests) |
 | TASK-002: Database schema, migrations, and RLS role separation | COMPLETE | 1 of 3 | PASS (10/10, 140 tests) |
-| TASK-003: User registration | IN PROGRESS | 2 of 3 | Iter 1: FAIL (5/6 AC, regression) |
-| TASK-004: User login and logout | PENDING | 0 of 3 | -- |
+| TASK-003: User registration | COMPLETE | 2 of 3 | PASS (6/6 AC, 295 tests) |
+| TASK-004: User login and logout | NEXT | 0 of 3 | -- |
 | TASK-005: Ownership guard middleware and data isolation | PENDING | 0 of 3 | -- |
 | TASK-006: Create a note with persistence | PENDING | 0 of 3 | -- |
 | TASK-007: Split-pane Markdown editor with live preview | PENDING | 0 of 3 | -- |
@@ -39,8 +39,8 @@ Plan Gate passed. Cycle 1 execution in progress. TASK-016 verified PASS (6/6, 43
 | TASK-013: Note version history | PENDING | 0 of 3 | -- |
 
 **Cycle summary:**
-- Tasks complete: 3 of 14 (TASK-001 DevOps Phase 1, TASK-016 Workspace layout, TASK-002 Database schema)
-- Tasks in progress: 1 (TASK-003)
+- Tasks complete: 4 of 14 (TASK-001 DevOps Phase 1, TASK-016 Workspace layout, TASK-002 Database schema, TASK-003 User registration)
+- Tasks in progress: 0
 - Requirements satisfied this cycle: 0 of target
 - Sentinel: Not invoked
 
@@ -60,17 +60,17 @@ Plan Gate passed. Cycle 1 execution in progress. TASK-016 verified PASS (6/6, 43
 
 ## Pending Decisions
 
-NONE -- Verifier iteration 2 in progress for TASK-003.
+NONE -- TASK-003 closed. Ready to dispatch Builder for TASK-004.
 
 ---
 
 ## Iterate Loop State
 
-**Task:** TASK-003
+**Task:** TASK-003 -- CLOSED (PASS at iteration 2)
 **Iteration:** 2 of 3
-**Failure trend:** [2] (iteration 1: 2 failures -- AC-6 test infra, TASK-002 regression)
-**Convergence check:** First re-verification -- no trend yet
-**Next action:** Verifier dispatched (mode: Iterate-loop re-verification). Expecting completion signal.
+**Failure trend:** [2, 0] (iteration 1: 2 failures; iteration 2: 0 failures)
+**Convergence check:** Converged
+**Next action:** Builder dispatch for TASK-004
 
 ---
 
@@ -81,8 +81,8 @@ NONE -- Verifier iteration 2 in progress for TASK-003.
 | Auditor passes -- requirements | 1 (v2, PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 1 (v1, PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 3 of 14 planned (TASK-001, TASK-016, TASK-002) |
-| Average iterations to PASS | 1.5 (TASK-016: 2, TASK-002: 1) |
+| Tasks completed | 4 of 14 planned (TASK-001, TASK-016, TASK-002, TASK-003) |
+| Average iterations to PASS | 1.67 (TASK-016: 2, TASK-002: 1, TASK-003: 2) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -116,6 +116,7 @@ NONE -- Verifier iteration 2 in progress for TASK-003.
 | Environment Contract | `process/devops/environment-contract-v1.md` | v1 |
 | Verification Report -- TASK-016 | `process/verifier/verification-report-task-016.md` | Iteration 2 (PASS 6/6) |
 | Verification Report -- TASK-002 | `process/verifier/verification-report-task-002.md` | Iteration 1 (PASS 10/10) |
+| Verification Report -- TASK-003 | `process/verifier/verification-report-task-003.md` | Iteration 2 (PASS 6/6) |
 
 ---
 

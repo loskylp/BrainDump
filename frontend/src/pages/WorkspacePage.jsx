@@ -5,15 +5,18 @@
  * (WorkspaceLayout) with the note catalog (Sidebar), Markdown editor (Editor),
  * and live preview (Preview). Owns the top-level note selection and content state.
  *
+ * Authentication: user is guaranteed authenticated by ProtectedRoute (TASK-004).
+ * The logout button in the sidebar calls useAuth().logout() and navigates to /login.
+ *
  * State managed by this page:
  *   - activeNoteId: UUID of the currently open note (null if none selected)
  *   - notes: array of all user notes (for the sidebar catalog)
  *   - content: { title, body } of the currently open note (for editor and preview)
  *
  * Hook wiring:
+ *   - useAuth: provides user context and logout function (TASK-004)
  *   - useAutoSave: wired to content and activeNoteId (TASK-012)
  *   - useVersionTimer: wired to content and activeNoteId (TASK-013)
- *   - useAuth: provides user context for display (TASK-004)
  *
  * Data flow:
  *   Sidebar.onSelectNote -> load note from API -> set content in Editor
@@ -26,21 +29,55 @@
 // TASK-007/008/009/012/013 will replace placeholders with real components
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.jsx';
+import { useAuth } from '../hooks/useAuth.js';
 
 /**
  * @returns {JSX.Element}
  *
  * @precondition User is authenticated (ProtectedRoute ensures this)
  * @postcondition WorkspaceLayout renders with all three panels
+ * @postcondition Logout button is visible and functional in the sidebar panel
  */
 function WorkspacePage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  /**
+   * Calls the logout API and navigates to /login.
+   * Navigates regardless of whether the logout API call succeeds to ensure
+   * the user is always returned to the login page.
+   */
+  async function handleLogout() {
+    try {
+      await logout();
+    } finally {
+      navigate('/login');
+    }
+  }
+
   return (
     <WorkspaceLayout
       sidebar={
-        <div className="p-4 text-text-secondary font-sans text-sm">
+        <div className="p-4 text-text-secondary font-sans text-sm flex flex-col h-full">
           {/* TASK-008: Sidebar component replaces this placeholder */}
-          <p className="text-text-muted">Notes will appear here</p>
+          <p className="text-text-muted mb-4">Notes will appear here</p>
+
+          <div className="mt-auto">
+            {user && (
+              <p className="text-text-muted text-xs mb-2 truncate" title={user.email}>
+                {user.username}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full py-1 px-3 text-sm border border-border text-text-secondary hover:text-text-primary hover:border-text-secondary rounded focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              Log out
+            </button>
+          </div>
         </div>
       }
       editor={

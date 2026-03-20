@@ -5,7 +5,6 @@
  * corresponds to one backend route in src/routes/auth.js.
  */
 
-// TODO: TASK-004 (login, logout), TASK-015 (forgotPassword, resetPassword)
 import { post } from './client.js';
 
 /**
@@ -32,8 +31,7 @@ export async function register({ username, email, password }) {
  * @throws {ApiError} 401 if credentials are invalid
  */
 export async function login(email, password) {
-  // TODO: TASK-004 -- implement: post('/api/auth/login', { email, password })
-  throw new Error('Not implemented');
+  return post('/api/auth/login', { email, password });
 }
 
 /**
@@ -42,8 +40,7 @@ export async function login(email, password) {
  * @returns {Promise<{ message: string }>}
  */
 export async function logout() {
-  // TODO: TASK-004 -- implement: post('/api/auth/logout')
-  throw new Error('Not implemented');
+  return post('/api/auth/logout');
 }
 
 /**

@@ -9,12 +9,12 @@
  * All routes delegate business logic to authService.
  */
 
-// TODO: TASK-004 (login, logout), TASK-015 (forgot-password, reset-password)
 'use strict';
 
 const express = require('express');
 const router = express.Router();
 const authService = require('../services/authService');
+const { User } = require('../models');
 
 /**
  * POST /api/auth/register
@@ -54,6 +54,44 @@ router.post('/register', async (req, res, next) => {
 });
 
 /**
+ * GET /api/auth/me
+ *
+ * Returns the currently authenticated user's profile, or 401 if no session
+ * is active. Used by the frontend useAuth hook to check session state on mount.
+ *
+ * @returns {200} { user: { id, username, email } } -- session is active
+ * @returns {401} { error: "Authentication required" } -- no active session
+ *
+ * Postconditions:
+ *   - Does not modify session state
+ *   - Returns 401 without leaking user existence details for unauthenticated requests
+ */
+router.get('/me', async (req, res, next) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = await User.findByPk(req.session.userId);
+    if (!user) {
+      // Session references a deleted user -- clear the stale session
+      req.session.destroy(() => {});
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    res.status(200).json({
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * POST /api/auth/login
  *
  * Authenticates an existing user and establishes a session.
@@ -70,8 +108,23 @@ router.post('/register', async (req, res, next) => {
  *   - Error message does not reveal which field was incorrect (no enumeration)
  */
 router.post('/login', async (req, res, next) => {
-  // TODO: TASK-004 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const { email, password } = req.body;
+    const user = await authService.login(email, password);
+
+    // Establish session (ADR-002)
+    req.session.userId = user.id;
+
+    res.status(200).json({
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
@@ -89,8 +142,19 @@ router.post('/login', async (req, res, next) => {
  *   - Subsequent requests with the old cookie return 401
  */
 router.post('/logout', async (req, res, next) => {
-  // TODO: TASK-004 -- implement
-  next(new Error('Not implemented'));
+  try {
+    await authService.logout(req.session);
+
+    // Clear the session cookie from the client
+    res.clearCookie('connect.sid', {
+      httpOnly: true,
+      sameSite: 'strict',
+    });
+
+    res.status(200).json({ message: 'Logged out' });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**

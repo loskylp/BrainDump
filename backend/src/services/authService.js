@@ -6,7 +6,6 @@
  * and transform the return values into HTTP responses.
  */
 
-// TODO: TASK-004 (login, logout), TASK-015 (forgotPassword, resetPassword)
 'use strict';
 
 const bcrypt = require('bcryptjs');
@@ -86,35 +85,83 @@ async function register({ username, email, password }) {
 }
 
 /**
- * Authenticates a user and returns their record on success.
+ * Authenticates a user by email and password.
+ *
+ * Looks up the user by normalized (lowercased, trimmed) email, then calls
+ * user.comparePassword(). Both "email not found" and "wrong password" cases
+ * throw an INVALID_CREDENTIALS error with an identical message to prevent
+ * user enumeration (ADR-002, REQ-002).
  *
  * @param {string} email - The user's email address
  * @param {string} password - The plaintext password to verify
- * @returns {Promise<User>} The authenticated User instance
- * @throws {Error} With message 'INVALID_CREDENTIALS' if email not found or password wrong
+ * @returns {Promise<User>} The authenticated User instance (password_hash excluded via toJSON)
+ * @throws {Error} code='VALIDATION_ERROR' if email or password is empty
+ * @throws {Error} code='INVALID_CREDENTIALS' if email not found or password wrong
  *
  * @precondition Neither email nor password is empty
  * @postcondition On success: returned User has id, username, email (no password_hash)
  * @postcondition Failed attempt does NOT reveal which field was incorrect
  */
 async function login(email, password) {
-  // TODO: TASK-004 -- implement
-  throw new Error('Not implemented');
+  if (!email || typeof email !== 'string' || email.trim().length === 0) {
+    const err = new Error('Email is required');
+    err.code = 'VALIDATION_ERROR';
+    throw err;
+  }
+
+  if (!password || typeof password !== 'string' || password.length === 0) {
+    const err = new Error('Password is required');
+    err.code = 'VALIDATION_ERROR';
+    throw err;
+  }
+
+  const user = await User.findOne({
+    where: { email: email.trim().toLowerCase() },
+  });
+
+  // Use a consistent error regardless of which field is wrong (no enumeration)
+  const invalidCredentials = () => {
+    const err = new Error('Invalid email or password');
+    err.code = 'INVALID_CREDENTIALS';
+    return err;
+  };
+
+  if (!user) {
+    throw invalidCredentials();
+  }
+
+  const passwordMatches = await user.comparePassword(password);
+  if (!passwordMatches) {
+    throw invalidCredentials();
+  }
+
+  return user;
 }
 
 /**
- * Destroys the session for the given session ID.
+ * Destroys the express-session, deleting its row from the PostgreSQL session store.
  *
- * @param {import('express-session').Session} session - The express-session object
+ * Wraps session.destroy() in a Promise so callers can await it. After this call,
+ * any subsequent request presenting the destroyed session ID will receive a fresh,
+ * unauthenticated session.
+ *
+ * @param {import('express-session').Session} session - The express-session object from req.session
  * @returns {Promise<void>}
- * @throws {Error} If session destruction fails in the store
+ * @throws {Error} If session.destroy() passes an error to its callback
  *
  * @postcondition Session row is deleted from the PostgreSQL session store
- * @postcondition The session cookie is no longer valid
+ * @postcondition The destroyed session ID is no longer valid for authentication
  */
 async function logout(session) {
-  // TODO: TASK-004 -- implement
-  throw new Error('Not implemented');
+  return new Promise((resolve, reject) => {
+    session.destroy((err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
 }
 
 /**

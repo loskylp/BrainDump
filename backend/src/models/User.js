@@ -28,22 +28,25 @@
 
 'use strict';
 
+const bcrypt = require('bcryptjs');
 const { Model, DataTypes } = require('sequelize');
 
 class User extends Model {
   /**
    * Compares a plaintext password against this user's stored bcrypt hash.
    *
+   * Delegates directly to bcryptjs.compare, which returns false on mismatch
+   * and only throws on an unexpected bcrypt internal error.
+   *
    * @param {string} plaintext - The password provided by the user at login.
-   * @returns {Promise<boolean>} True if the password matches the stored hash.
+   * @returns {Promise<boolean>} True if the password matches the stored hash, false otherwise.
    * @throws {Error} If bcrypt comparison fails unexpectedly (not on wrong password).
    *
    * @precondition this.password_hash is a valid bcrypt hash (set on registration)
    * @postcondition Returns false for wrong password without throwing
    */
   async comparePassword(plaintext) {
-    // TODO: TASK-004 -- implement bcrypt.compare(plaintext, this.password_hash)
-    throw new Error('Not implemented');
+    return bcrypt.compare(plaintext, this.password_hash);
   }
 
   /**
