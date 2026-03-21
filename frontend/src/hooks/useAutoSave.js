@@ -35,12 +35,13 @@ const SAVED_DISPLAY_MS = 1500;
  * @postcondition On 'saving' -> 'error': no partial write occurred; prior save is intact
  * @postcondition The hook does NOT call any version-related API (ADR-004 separation)
  */
-export function useAutoSave({ noteId, content, debounceMs = 2000 }) {
+export function useAutoSave({ noteId, content, debounceMs = 2000, onSave }) {
   const [status, setStatus] = useState('idle');
 
   // Refs to hold the latest values without re-creating the debounce timer
   const contentRef = useRef(content);
   const noteIdRef = useRef(noteId);
+  const onSaveRef = useRef(onSave);
   const timerRef = useRef(null);
   const savedTimerRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -54,6 +55,7 @@ export function useAutoSave({ noteId, content, debounceMs = 2000 }) {
   // Update refs on every render
   contentRef.current = content;
   noteIdRef.current = noteId;
+  onSaveRef.current = onSave;
 
   // Reset initial load flag when noteId changes (new note selected)
   useEffect(() => {
@@ -103,6 +105,7 @@ export function useAutoSave({ noteId, content, debounceMs = 2000 }) {
       });
 
       lastSavedRef.current = { ...currentContent };
+      if (onSaveRef.current) onSaveRef.current(currentNoteId, currentContent.title);
 
       if (isMountedRef.current) {
         setStatus('saved');

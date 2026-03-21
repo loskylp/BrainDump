@@ -107,6 +107,11 @@ function WorkspacePage() {
   const { status: saveStatus } = useAutoSave({
     noteId: activeNoteId,
     content: autoSaveContent,
+    onSave: useCallback((noteId, title) => {
+      setNotes((prev) =>
+        prev.map((n) => (n.id === noteId ? { ...n, title } : n))
+      );
+    }, []),
   });
 
   // ---------------------------------------------------------------------------
@@ -305,6 +310,9 @@ function WorkspacePage() {
     }
     try {
       await updateNote(activeNoteId, { title: editorTitle, body: editorBody });
+      setNotes((prev) =>
+        prev.map((n) => (n.id === activeNoteId ? { ...n, title: editorTitle } : n))
+      );
     } catch {
       // Error state surfaced in a future iteration.
     }
@@ -389,7 +397,7 @@ function WorkspacePage() {
                 value={editorTitle}
                 onChange={(e) => handleTitleChange(e.target.value)}
                 placeholder="Note title"
-                className="flex-1 bg-transparent text-text-primary font-mono text-sm outline-none placeholder-text-secondary"
+                className="flex-1 bg-transparent text-gray-100 font-mono text-sm outline-none placeholder-gray-500"
               />
               <span
                 data-testid="save-status"
