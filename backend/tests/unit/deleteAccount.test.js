@@ -107,7 +107,7 @@ describe('DELETE /api/auth/account', () => {
   });
 
   describe('when the user is authenticated and provides the correct password', () => {
-    it('returns 200 with a success message', async () => {
+    it('returns 204 with no body', async () => {
       authService.deleteAccount.mockResolvedValue(undefined);
 
       const app = buildApp({ userId: 'user-uuid-001' });
@@ -116,8 +116,7 @@ describe('DELETE /api/auth/account', () => {
         .delete('/api/auth/account')
         .send({ password: 'correct-password' });
 
-      expect(res.status).toBe(200);
-      expect(res.body.message).toBe('Account deleted successfully');
+      expect(res.status).toBe(204);
     });
 
     it('calls authService.deleteAccount with the user id and password', async () => {
@@ -151,8 +150,8 @@ describe('DELETE /api/auth/account', () => {
         .delete('/api/auth/account')
         .send({ password: 'correct-password' });
 
-      // Session must be destroyed (verified via 200 response — route calls destroy before responding)
-      expect(res.status).toBe(200);
+      // Session must be destroyed (verified via 204 response — route calls destroy before responding)
+      expect(res.status).toBe(204);
     });
   });
 

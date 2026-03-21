@@ -273,7 +273,7 @@ router.post('/reset-password', async (req, res, next) => {
  *   { password: string } -- required to confirm the deletion intent (prevents
  *   accidental deletion from active sessions)
  *
- * @returns {200} { message: "Account deleted successfully" }
+ * @returns {204} (no body)
  * @returns {400} { error: "VALIDATION_ERROR", message: string } -- password missing
  * @returns {401} { error: "INVALID_CREDENTIALS" } -- password does not match
  * @returns {401} { error: "Authentication required" } -- no active session
@@ -324,7 +324,7 @@ router.delete('/account', async (req, res, next) => {
       path: '/',
     });
 
-    res.status(200).json({ message: 'Account deleted successfully' });
+    res.status(204).end();
   } catch (err) {
     next(err);
   }
