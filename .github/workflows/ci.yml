@@ -122,6 +122,13 @@ jobs:
         run: npm ci
         working-directory: backend
 
+      - name: Run migrations
+        run: npx sequelize-cli db:migrate
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          POSTGRES_URL: postgresql://braindump_test:braindump_test@localhost:5432/braindump_test
+
       - name: Run integration tests
         run: npm run test:integration
         working-directory: backend
