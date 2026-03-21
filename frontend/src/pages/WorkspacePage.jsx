@@ -33,13 +33,14 @@
  *   - useVersionTimer: wired to editorBody and activeNoteId (TASK-013)
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.jsx';
 import Sidebar from '../components/common/Sidebar.jsx';
 import Editor from '../components/editor/Editor.jsx';
 import Preview from '../components/editor/Preview.jsx';
 import { useAuth } from '../hooks/useAuth.js';
+import { useAutoSave } from '../hooks/useAutoSave.js';
 import { getNotes, createNote, getNote, updateNote, deleteNote } from '../api/notes.js';
 
 /**
@@ -86,6 +87,25 @@ function WorkspacePage() {
    * @type {[string, Function]}
    */
   const [editorBody, setEditorBody] = useState('');
+
+  // ---------------------------------------------------------------------------
+  // Auto-save hook (TASK-012)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Memoised content object for useAutoSave. Changes identity only when
+   * editorTitle or editorBody actually change, preventing unnecessary
+   * debounce timer resets.
+   */
+  const autoSaveContent = useMemo(
+    () => ({ title: editorTitle, body: editorBody }),
+    [editorTitle, editorBody]
+  );
+
+  const { status: saveStatus } = useAutoSave({
+    noteId: activeNoteId,
+    content: autoSaveContent,
+  });
 
   // ---------------------------------------------------------------------------
   // Load notes on mount
@@ -338,6 +358,22 @@ function WorkspacePage() {
                 placeholder="Note title"
                 className="flex-1 bg-transparent text-text-primary font-mono text-sm outline-none placeholder-text-secondary"
               />
+              <span
+                data-testid="save-status"
+                className={`text-xs font-mono ${
+                  saveStatus === 'error'
+                    ? 'text-red-400'
+                    : saveStatus === 'saving'
+                      ? 'text-yellow-400'
+                      : saveStatus === 'saved'
+                        ? 'text-green-400'
+                        : 'text-text-secondary'
+                }`}
+              >
+                {saveStatus === 'saving' && 'Saving...'}
+                {saveStatus === 'saved' && 'Saved'}
+                {saveStatus === 'error' && 'Error'}
+              </span>
               <button
                 data-testid="save-button"
                 onClick={handleSave}

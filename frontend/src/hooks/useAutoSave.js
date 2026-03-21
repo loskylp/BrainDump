@@ -17,9 +17,11 @@
  *   'error'   -- Last save failed (network error, 404, etc.)
  */
 
-// TODO: TASK-012
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { updateNote } from '../api/notes.js';
+
+/** Duration to show the "Saved" indicator before reverting to idle (ms). */
+const SAVED_DISPLAY_MS = 1500;
 
 /**
  * @param {object} params
@@ -34,6 +36,115 @@ import { updateNote } from '../api/notes.js';
  * @postcondition The hook does NOT call any version-related API (ADR-004 separation)
  */
 export function useAutoSave({ noteId, content, debounceMs = 2000 }) {
-  // TODO: TASK-012 -- implement debounce timer, status state, PUT call
-  throw new Error('Not implemented');
+  const [status, setStatus] = useState('idle');
+
+  // Refs to hold the latest values without re-creating the debounce timer
+  const contentRef = useRef(content);
+  const noteIdRef = useRef(noteId);
+  const timerRef = useRef(null);
+  const savedTimerRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  // Track the last-saved content to avoid unnecessary saves
+  const lastSavedRef = useRef(null);
+
+  // Track whether this is the initial content load (skip auto-save on first render)
+  const isInitialLoadRef = useRef(true);
+
+  // Update refs on every render
+  contentRef.current = content;
+  noteIdRef.current = noteId;
+
+  // Reset initial load flag when noteId changes (new note selected)
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    lastSavedRef.current = null;
+    setStatus('idle');
+  }, [noteId]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    };
+  }, []);
+
+  /**
+   * Performs the actual save. Reads from refs so it always sends the
+   * latest content, even if React hasn't re-rendered yet.
+   */
+  const performSave = useCallback(async () => {
+    const currentNoteId = noteIdRef.current;
+    const currentContent = contentRef.current;
+
+    if (!currentNoteId || !currentContent) {
+      return;
+    }
+
+    // Skip if content hasn't changed since last save
+    if (
+      lastSavedRef.current &&
+      lastSavedRef.current.title === currentContent.title &&
+      lastSavedRef.current.body === currentContent.body
+    ) {
+      if (isMountedRef.current) setStatus('idle');
+      return;
+    }
+
+    if (isMountedRef.current) setStatus('saving');
+
+    try {
+      await updateNote(currentNoteId, {
+        title: currentContent.title,
+        body: currentContent.body,
+      });
+
+      lastSavedRef.current = { ...currentContent };
+
+      if (isMountedRef.current) {
+        setStatus('saved');
+
+        // Revert to idle after a brief display period
+        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+        savedTimerRef.current = setTimeout(() => {
+          if (isMountedRef.current) setStatus('idle');
+        }, SAVED_DISPLAY_MS);
+      }
+    } catch {
+      if (isMountedRef.current) setStatus('error');
+    }
+  }, []);
+
+  // Main debounce effect: resets timer on every content change
+  useEffect(() => {
+    if (!noteId || !content) {
+      return;
+    }
+
+    // Skip the initial content load (when note is first opened, content is
+    // set from the fetched note -- that is not a user edit)
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      lastSavedRef.current = { title: content.title, body: content.body };
+      return;
+    }
+
+    // Content changed -- set pending and start/reset debounce timer
+    setStatus('pending');
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    timerRef.current = setTimeout(() => {
+      performSave();
+    }, debounceMs);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [noteId, content?.title, content?.body, debounceMs, performSave]);
+
+  return { status };
 }
