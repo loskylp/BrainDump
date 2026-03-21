@@ -134,7 +134,7 @@ export default function ShortcutReference({ isOpen, onClose }) {
             {SHORTCUT_ENTRIES.map(({ keys, description }) => (
               <tr key={keys} className="border-b border-border last:border-0">
                 <td className="py-2 pr-4 text-text-primary whitespace-nowrap">
-                  <kbd className="bg-bg-editor border border-border px-1 py-0.5 text-xs rounded-sm">
+                  <kbd className="bg-bg-tertiary border border-border px-1 py-0.5 text-xs rounded-sm text-text-primary">
                     {keys}
                   </kbd>
                 </td>
