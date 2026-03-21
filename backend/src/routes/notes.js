@@ -105,8 +105,11 @@ router.get('/:id', ownershipGuard('Note', 'id'), async (req, res, _next) => {
  */
 router.put('/:id', ownershipGuard('Note', 'id'), async (req, res, next) => {
   try {
-    const { title, body, folderId } = req.body;
-    const note = await noteService.updateNote(req.params.id, req.session.userId, { title, body, folderId });
+    const updates = {};
+    if ('title' in req.body) updates.title = req.body.title;
+    if ('body' in req.body) updates.body = req.body.body;
+    if ('folderId' in req.body) updates.folderId = req.body.folderId;
+    const note = await noteService.updateNote(req.params.id, req.session.userId, updates);
     res.json({ note });
   } catch (err) {
     next(err);
