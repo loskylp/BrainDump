@@ -63,7 +63,7 @@ function Preview({ value }) {
   return (
     <div
       data-testid="preview-panel"
-      className="h-full p-4 font-sans overflow-y-auto bg-bg-primary prose prose-sm max-w-none"
+      className="h-full p-4 font-sans overflow-y-auto bg-bg-primary text-text-primary prose prose-sm max-w-none"
       // Safe: html: false ensures raw HTML tags in the source are escaped
       // eslint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{ __html: html }}
