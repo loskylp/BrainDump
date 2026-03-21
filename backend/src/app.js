@@ -50,6 +50,12 @@ const sessionMiddleware = require('./config/session');
 
 const app = express();
 
+// Trust the first proxy (Traefik). Required so that req.secure === true when
+// Traefik terminates TLS and forwards over plain HTTP. Without this,
+// express-session will not set the session cookie in production because it
+// sees the request as non-HTTPS.
+app.set('trust proxy', 1);
+
 // --- Middleware chain ---
 
 // 1. Security headers
