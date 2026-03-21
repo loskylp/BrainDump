@@ -1,25 +1,76 @@
 # Project State
-**Manifest version:** v1 | **Profile:** Commercial
-**Current phase:** CYCLE 2 PLANNING
-**Current cycle:** 2
-**Last updated:** 2026-03-21
+**Manifest version:** v3 | **Profile:** Commercial
+**Current phase:** CYCLE 3 EXECUTION -- TASK-027 BUILDER COMPLETE, AWAITING VERIFIER
+**Current cycle:** 3
+**Last updated:** 2026-03-21 (TASK-027 tagging backend implemented. Awaiting commit + Verifier dispatch.)
 
 ---
 
 ## Where We Are
 
-Cycle 1 is fully closed. All 14 tasks verified PASS. CI green. Staging deployed. Demo signed off by the Nexus on 2026-03-21. Playwright demo screenshots (12 screenshots across 5 tasks) committed to version control under `tests/demo/TASK-XXX/`. Sentinel cycle-level security review complete -- SEC-003 resolved, SEC-001 deferred to Cycle 2 as TASK-024.
+Cycle 2 is CLOSED. Demo Sign-off was APPROVED by the Nexus on 2026-03-21. All 10 tasks verified PASS, Playwright demo validation completed against staging, two bugs fixed inline during validation (TASK-025 kbd styling, TASK-018 mobile sidebar), screenshots committed. Staging live at https://braindump.staging.nxlabs.cc.
 
-The Methodologist retrospective question is pending: "Is there anything you want to change for the next iteration?" Once answered, proceed to Cycle 2 planning via the Planner.
+Three new feature requests received from stakeholder demo:
+1. Full export to ZIP (export all notes at once as a ZIP archive)
+2. Global tagging system (tag notes with user-defined labels, filter/browse by tag)
+3. Reading Mode (distraction-free rendered Markdown view, no editor chrome)
+
+Analyst dispatched to produce requirements-v4.md with REQ-020, REQ-021, REQ-022.
+
+TASK-025 verification summary: Commits 17b8159 (iter 1), 873daa7 (iter 2 + Verifier artifacts). CI run 23388053947 -- all 5 jobs green. 8/8 AC passed (including Cmd+B bold, Cmd+I italic).
+
+TASK-026 verification summary: Pushed by Builder. CI all 5 jobs green. 7/7 AC passed. 510/510 frontend tests passing.
+
+TASK-019 verification summary: Commits 4f5fbea (Builder), 9f9caa8 (Verifier artifacts). CI runs 23386531154 + 23386712360 -- all 5 jobs green on both. Staging confirmed healthy. 252 backend unit + 20 acceptance tests, 403 frontend tests passing. Full cascade deletion verified at DB level (user, notes, folders, versions gone). Non-blocking observations: OBS-V019-01 (duplicate JSDoc), OBS-V019-02 (stale TODO comment in App.jsx).
+
+TASK-018 verification summary: Commit ee1c869. CI run 23386191945 -- all 5 jobs green. Staging confirmed healthy. All 6 AC passed (1 iteration). OBS-V007-02 resolved (prose-preview class already fixed in Cycle 1). Pre-existing observation: TASK-007 FF-D02 latency test at 128ms vs 100ms target -- not introduced by TASK-018. 389/390 tests passing (1 pre-existing FF-D02 latency test failure).
+
+TASK-021 verification summary: Commit 49c6fa8. CI run 23385582169 -- all 5 jobs green. Staging confirmed healthy. All 8 AC passed. OBS-V004-05 resolved (--runInBand, 610 tests passing serially). New observations (non-blocking): OBS-V021-01 DB naming, OBS-V021-02 Kuma label, OBS-V021-03 Node.js 20 deprecation (fix before June 2026).
+
+TASK-017 verification summary: 2 iterations. CI run 23385024748 -- all 5 jobs green. Staging confirmed healthy. All 9 AC passed. Stale test fix committed (5f22b50).
+
+TASK-015 verification summary: Commits 3b21af7, b03f4e8. CI run 23383805381 -- all 5 jobs green. Staging confirmed healthy. 217 backend unit + 29 acceptance tests passing. All 8 AC passed. Non-blocking observations: OBS-V015-01 (timing side-channel, pre-production hardening), OBS-V015-02 (unused var cleanup).
+
+TASK-014 verification summary: Commit 34738a5. CI run 23383138143 -- all 5 jobs green. Staging confirmed healthy post-deploy. 201 backend / 302 frontend tests passing. All 10 AC passed. Demo script: tests/demo/TASK-014-demo.md.
+
+TASK-024 verification summary: Commits 39b7dc1, c9d19dc, 3a6991f, 1238fad. CI run 23376742012 -- all 5 jobs green. Staging confirmed: rate limit headers present, 429 enforced at request 10. 203 unit tests + 27 acceptance tests passing. Demo script: tests/demo/TASK-024-demo.md.
+
+**Cycle 2 execution order:**
+1. TASK-024 Rate limiting on auth endpoints (P1)
+2. TASK-014 Full-text search (P1)
+3. TASK-015 Password reset flow (P1)
+4. TASK-017 Folder organization (P2)
+5. TASK-021 DevOps Phase 2 (P2, DevOps agent)
+6. TASK-018 Responsive design (P2)
+7. TASK-025 Keyboard shortcuts (P2) -- COMPLETE
+8. TASK-026 Export notes as Markdown (P2) -- COMPLETE
+9. TASK-019 Account deletion (P2) -- COMPLETE
+10. TASK-020 Fitness function instrumentation (P2, depends on TASK-014) -- COMPLETE
+
+**Standing flags:**
+- All tasks complete. Sentinel cycle-level security review in progress.
+- After Sentinel report: prepare Demo Sign-off Briefing with Playwright demo validation.
 
 **CI INCIDENT (2026-03-21, RESOLVED):** All CI jobs failing, staging unreachable. Four root causes identified and fixed (see ESC-002 in escalation log). CI pipeline restored.
 
 ## Active Work
 
-**Agent in control:** Orchestrator (transition to Cycle 2)
-**Current task:** Methodologist retrospective question, then Cycle 2 planning
-**Iteration:** --
-**Waiting for:** Methodologist response to retrospective question
+**Agent in control:** Builder (TASK-027 complete, awaiting commit and Verifier)
+**Current task:** TASK-027 -- Tagging backend: schema, model, API
+**Iteration:** 1 of 3 (Builder implementation complete)
+**Waiting for:** Git commit + push, then Verifier dispatch
+**Completed:** Requirements Gate APPROVED. ADR-010 + ADR-011 produced. Planner produced task-plan-v3.md. TASK-027 code written (3 migrations, 2 models, 1 service, 1 route file, updated notes routes + app.js + search service + models/index.js).
+
+**Scaffolder:** COMPLETE. 16 new stub files created, 4 additive extensions, express-rate-limit added to package.json. Manifest at process/scaffolder/scaffold-manifest-cycle2.md.
+**Methodologist retrospective:** COMPLETE. Manifest updated to v3.
+**TASK-024:** VERIFIED PASS (1 iteration). SEC-001 resolved.
+**TASK-014:** VERIFIED PASS (1 iteration). Commit 34738a5. CI run 23383138143. 201 backend / 302 frontend tests.
+**TASK-015:** VERIFIED PASS (1 iteration). Commits 3b21af7, b03f4e8. CI run 23383805381. 217 backend unit + 29 acceptance. 8/8 AC.
+**TASK-017:** VERIFIED PASS (2 iterations). CI run 23385024748. All 9 AC passed. Stale test fix 5f22b50.
+**TASK-021:** VERIFIED PASS. Commit 49c6fa8. CI run 23385582169. All 8 AC passed. OBS-V004-05 resolved.
+**TASK-018:** VERIFIED PASS (1 iteration). Commit ee1c869. CI run 23386191945. 6/6 AC. OBS-V007-02 resolved.
+**TASK-019:** VERIFIED PASS (1 iteration). Commits 4f5fbea, 9f9caa8. CI runs 23386531154 + 23386712360. 5/5 AC. Cascade deletion verified.
+**TASK-020:** VERIFIED PASS (1 iteration). Commit 6ee066e. CI run 23387142494. FF-D24/FF-D04/FF-D12/FF-D16 passing. Staging confirmed healthy.
 
 ---
 
@@ -50,6 +101,50 @@ The Methodologist retrospective question is pending: "Is there anything you want
 
 ---
 
+## Cycle 2 -- Task Status
+
+| Task | Status | Iterations | Verifier |
+|---|---|---|---|
+| TASK-024: Rate limiting on auth endpoints | COMPLETE | 1 of 3 | PASS (6/6 AC, 203 unit + 27 acceptance, CI 23376742012 green, staging confirmed) |
+| TASK-014: Full-text search | COMPLETE | 1 of 3 | PASS (10/10 AC, 201 backend + 302 frontend tests, CI 23383138143 green, staging confirmed) |
+| TASK-015: Password reset flow | COMPLETE | 1 of 3 | PASS (8/8 AC, 217 unit + 29 acceptance, CI 23383805381 green, staging confirmed) |
+| TASK-017: Folder organization | COMPLETE | 2 of 3 | PASS (9/9 AC, CI 23385024748 green, staging confirmed) |
+| TASK-021: DevOps Phase 2 | COMPLETE | -- | PASS (8/8 AC, CI 23385582169 green, staging confirmed, commit 49c6fa8) |
+| TASK-018: Responsive design | COMPLETE | 1 of 3 | PASS (6/6 AC, CI 23386191945 green, staging confirmed, commit ee1c869) |
+| TASK-025: Keyboard shortcuts | COMPLETE | 2 of 3 | PASS (8/8 AC, CI 23388053947 green, commits 17b8159 + 873daa7) |
+| TASK-026: Export notes as Markdown | COMPLETE | 1 of 3 | PASS (7/7 AC, CI green, 510/510 frontend tests) |
+| TASK-019: Account deletion | COMPLETE | 1 of 3 | PASS (5/5 AC, CI 23386531154 + 23386712360 green, staging confirmed, commits 4f5fbea + 9f9caa8) |
+| TASK-020: Fitness function instrumentation | COMPLETE | 1 of 3 | PASS (FF-D24/FF-D04/FF-D12/FF-D16 passing, CI 23387142494 green, staging confirmed, commit 6ee066e) |
+
+**Cycle summary:**
+- Tasks complete: 10 of 10 (all Cycle 2 tasks)
+- Tasks in progress: 0
+- Tasks pending: 0
+- Sentinel: COMPLETE -- cycle-level security review done
+- Demo Sign-off: APPROVED (2026-03-21) -- Playwright validation complete, two inline bug fixes (TASK-025 kbd styling, TASK-018 mobile sidebar), screenshots committed to tests/demo/
+
+---
+
+## Cycle 3 -- Task Status
+
+| Task | Status | Iterations | Verifier |
+|---|---|---|---|
+| TASK-027: Tagging backend | IN PROGRESS | 1 of 3 | AWAITING VERIFIER |
+| TASK-028: Tagging frontend | PENDING | -- | -- |
+| TASK-029: Bulk export to ZIP | PENDING | -- | -- |
+| TASK-030: Reading mode | PENDING | -- | -- |
+| TASK-031: DevOps Phase 3 -- production | PENDING | -- | -- |
+| TASK-032: Production monitoring | PENDING | -- | -- |
+| TASK-033: Sentinel security review | PENDING | -- | -- |
+
+**Cycle summary:**
+- Tasks complete: 0 of 7
+- Tasks in progress: 0
+- Tasks pending: 7
+- Builder execution order: TASK-027 >> TASK-028 >> TASK-029 >> TASK-030
+
+---
+
 ## Nexus Gate Log
 
 | Gate | Date | Decision | Notes |
@@ -57,14 +152,17 @@ The Methodologist retrospective question is pending: "Is there anything you want
 | Requirements Gate | 2026-03-19 | APPROVED | 17 requirements (12 Must Have, 5 Should Have). Auditor: PASS WITH DEFERRALS. |
 | Architecture Gate | 2026-03-19 | APPROVED | 9 ADRs, 55 fitness functions, 17/17 covered. Auditor: PASS. |
 | Plan Gate | 2026-03-19 | APPROVED | 23 tasks across 3 cycles. Cycle 1: 14 tasks (walking skeleton). Cut line: TASK-019 (account deletion) deferred. |
+| Plan Gate -- Cycle 2 | 2026-03-21 | APPROVED | 10 tasks. 2 untraced features (TASK-025, TASK-026) flagged -- Nexus accepted with requirement creation before Builder. |
+| Requirements Gate -- v4 (Cycle 3 features) | 2026-03-21 | APPROVED | Three new requirements (REQ-020 ZIP export, REQ-021 tagging, REQ-022 reading mode). Nexus clarifications applied: complete collection/no history for ZIP, Unicode+digits+hyphens/no spaces for tags, OR filter confirmed. |
 | Demo Sign-off -- Cycle 1 | 2026-03-21 | ACCEPTED | 14/14 tasks PASS, 448 tests, Sentinel clear. 12 Playwright screenshots reviewed and committed. |
+| Demo Sign-off -- Cycle 2 | 2026-03-21 | APPROVED | 10/10 tasks PASS. Playwright demo validation complete. Two inline bug fixes. Screenshots committed. |
 | Go-Live -- v1.0.0 | -- | -- | |
 
 ---
 
 ## Pending Decisions
 
-None. Cycle 1 Demo Sign-off accepted. Next decision point: Methodologist retrospective, then Plan Gate for Cycle 2.
+Plan Gate presented (lightweight). Scaffolder dispatched for Cycle 3 stub creation. Builder-Verifier loop begins after scaffolding.
 
 ---
 
@@ -72,17 +170,28 @@ None. Cycle 1 Demo Sign-off accepted. Next decision point: Methodologist retrosp
 
 | Task | Source | Severity | Description | Status |
 |---|---|---|---|---|
-| TASK-024 | SEC-001 (Sentinel Cycle 1) | High | Install `express-rate-limit`, apply to `POST /api/auth/login` and `POST /api/auth/register` with 10 req/15min per IP limit | Pending -- Cycle 2 |
+| TASK-024 | SEC-001 (Sentinel Cycle 1) | High | Install `express-rate-limit`, apply to `POST /api/auth/login` and `POST /api/auth/register` with 10 req/15min per IP limit | RESOLVED -- VERIFIED PASS (2026-03-21) |
 
 ---
 
 ## Iterate Loop State
 
-**Task:** Cycle 1 closed
-**Iteration:** --
-**Failure trend:** N/A
+**Task:** TASK-027 -- Tagging backend
+**Iteration:** 1 of 3 (Builder implementation complete)
+**Failure trend:** N/A (first iteration)
 **Convergence check:** N/A
-**Next action:** Ask Methodologist retrospective question. On response: route to Planner for Cycle 2 task plan (three-pass sequence: decomposition, scoring, release map).
+**Next action:** Commit and push TASK-027 code. Dispatch Verifier for TASK-027. On PASS, proceed to TASK-028 (tagging frontend).
+
+**Previous task:** TASK-026 -- VERIFIED PASS. CI all 5 jobs green. 7/7 AC. 510/510 frontend tests. 1 iteration.
+**Prior task:** TASK-025 -- VERIFIED PASS. Commits 17b8159 + 873daa7. CI run 23388053947. 8/8 AC. 2 iterations.
+**Prior task:** TASK-020 -- VERIFIED PASS. Commit 6ee066e. CI run 23387142494. All 5 jobs green. FF-D24/FF-D04/FF-D12/FF-D16 passing. 1 iteration.
+**Prior task:** TASK-019 -- VERIFIED PASS. Commits 4f5fbea, 9f9caa8. CI runs 23386531154 + 23386712360. 5/5 AC. 1 iteration. Cascade deletion verified.
+**Prior task:** TASK-018 -- VERIFIED PASS. Commit ee1c869. CI run 23386191945. 6/6 AC. 1 iteration. OBS-V007-02 resolved.
+**Prior task:** TASK-021 -- VERIFIED PASS. Commit 49c6fa8. CI run 23385582169. 8/8 AC. OBS-V004-05 resolved.
+**Prior task:** TASK-017 -- VERIFIED PASS in 2 iterations. No escalation.
+**Prior task:** TASK-015 -- VERIFIED PASS in 1 iteration. No failures, no escalation.
+**Prior task:** TASK-014 -- VERIFIED PASS in 1 iteration. No failures, no escalation.
+**Prior task:** TASK-024 -- VERIFIED PASS in 1 iteration. No failures, no escalation.
 
 ---
 
@@ -118,15 +227,20 @@ This process was codified after Cycle 1 demo validation on 2026-03-21.
 
 ## Standing Routing Rules (Cycle 1 -- CLOSED)
 
-- Scaffolder runs before first Builder task (14 tasks >= 3 threshold). DONE.
-- Builder execution order (sequential): TASK-016 (DONE), TASK-002 (DONE), TASK-003 (DONE), TASK-004 (DONE), TASK-005 (DONE), TASK-006 (DONE), TASK-008 (DONE), TASK-011 (DONE), TASK-007 (DONE), TASK-009, TASK-010, TASK-012, TASK-013.
-- TASK-012 (auto-save) and TASK-013 (versioning) must be sequential.
-- OBS-002: Migration role RLS bypass -- resolved by separating RLS into its own migration (20260319000006). DDL is not subject to RLS; test/seed scripts must SET LOCAL before DML.
-- OBS-V004-05: Acceptance tests exhibit intermittent timeouts when Jest runs in parallel against the live session store. Pass cleanly under --runInBand. DevOps should configure CI to run acceptance tests serially. (Action: route to DevOps when next DevOps task is dispatched, or note for TASK-021.)
-- ESC-001: RESOLVED. Stale TASK-005 Verifier test (`toBe(500)` on `GET /api/notes/:id`) updated to `toBe(200)` during TASK-011 verification.
-- After all Cycle 1 tasks pass Verifier, route to Sentinel. DONE.
-- SEC-001 (no rate limiting on auth endpoints) deferred to Cycle 2 as TASK-024. Dependencies satisfied (TASK-004 complete). Schedule early in Cycle 2.
-- DevOps Phase 2 (staging) triggers after first Builder task passes Verifier. TASK-016 passed -- eligible.
+- All Cycle 1 rules satisfied and closed. See Cycle 1 task status above.
+
+## Standing Routing Rules (Cycle 2 -- CLOSED)
+
+- Scaffolder runs before first Builder task (10 tasks >= 3 threshold). COMPLETE.
+- Builder execution order (sequential): TASK-024, TASK-014, TASK-015, TASK-017, TASK-021 (DevOps), TASK-018, TASK-025 (BLOCKED), TASK-026 (BLOCKED), TASK-019, TASK-020.
+- TASK-025 and TASK-026: COMPLETE. REQ-018 and REQ-019 audited and implemented.
+- TASK-021: Route to DevOps agent (not Builder). Include OBS-V004-05 action: configure CI acceptance tests to run with --runInBand.
+- TASK-020: Depends on TASK-014. Must not be scheduled before TASK-014 is COMPLETE.
+- OBS-V004-05: Route to DevOps during TASK-021 -- CI should configure acceptance tests to run serially.
+- OBS-V008-02: Address if touched during TASK-017 (folder integration with sidebar).
+- OBS-V007-02: RESOLVED during TASK-018 verification (prose-preview class confirmed fixed in Cycle 1).
+- After all Cycle 2 tasks pass Verifier, route to Sentinel for cycle-level security review.
+- After Sentinel, prepare Demo Sign-off Briefing with Playwright demo validation per Manifest Rule 3.
 
 ---
 
@@ -135,7 +249,7 @@ This process was codified after Cycle 1 demo validation on 2026-03-21.
 | ID | Source | Description | Status |
 |---|---|---|---|
 | OBS-002 | Auditor | Migration role RLS bypass | Resolved (TASK-002) |
-| OBS-V004-05 | Verifier (TASK-004) | Acceptance tests intermittent timeouts in parallel Jest against live session store; pass under --runInBand | Open -- route to DevOps (CI config) |
+| OBS-V004-05 | Verifier (TASK-004) | Acceptance tests intermittent timeouts in parallel Jest against live session store; pass under --runInBand | RESOLVED -- TASK-021 configured --runInBand, 610 tests passing serially |
 | OBS-V008-01 | Verifier (TASK-008) | WorkspaceLayout uses inline style for grid instead of Tailwind classes; inconsistent with Tailwind-first approach but not prohibited by ADR-008 | Open -- informational |
 | OBS-V008-02 | Verifier (TASK-008) | getNotes() failure silently falls back to empty state with no error indicator; acceptable for TASK-008 scope | Open -- track for UX task |
 | OBS-V008-03 | Verifier (TASK-008) | Notes with empty title render as "Untitled" in NoteItem; defensive and consistent with domain model | Closed -- by design |
@@ -143,9 +257,16 @@ This process was codified after Cycle 1 demo validation on 2026-03-21.
 | OBS-V011-02 | Verifier (TASK-011) | rounded class on features section produces 4px radius, within ADR-008 spec | Closed -- within spec |
 | OBS-V011-03 | Verifier (TASK-011) | No meta description tag -- noted for future SEO work | Open -- informational |
 | OBS-V007-01 | Verifier (TASK-007) | TASK-003 registration verifier occasionally fails under full parallel suite run due to DB state contention -- pre-existing (same as OBS-V004-05) | Open -- pre-existing |
-| OBS-V007-02 | Verifier (TASK-007) | prose-preview Tailwind class used in Preview but not defined in tailwind.config.js -- harmless, should be defined or removed | Open -- informational |
+| OBS-V007-02 | Verifier (TASK-007) | prose-preview Tailwind class used in Preview but not defined in tailwind.config.js -- harmless, should be defined or removed | RESOLVED -- confirmed fixed during Cycle 1, verified in TASK-018 |
 | OBS-V007-03 | Verifier (TASK-007) | WorkspaceLayout and Editor both apply bg-bg-editor -- slight redundancy, not a defect | Open -- informational |
 | OBS-V007-04 | Verifier (TASK-007) | Monospace font applied via inline style on CM6 instance -- correct approach for CM6 shadow DOM, not an ADR-008 violation | Closed -- not a violation |
+| OBS-V015-01 | Verifier (TASK-015) | Timing side-channel on forgot-password endpoint -- pre-production hardening item | Open -- pre-production |
+| OBS-V015-02 | Verifier (TASK-015) | Unused variable cleanup in password reset implementation | Open -- informational |
+| OBS-V021-01 | Verifier (TASK-021) | DB naming convention inconsistency in staging compose | Open -- informational |
+| OBS-V021-02 | Verifier (TASK-021) | Uptime Kuma label needs review | Open -- informational |
+| OBS-V021-03 | Verifier (TASK-021) | Node.js 20 deprecation -- fix before June 2026 | Open -- pre-production |
+| OBS-V019-01 | Verifier (TASK-019) | Duplicate JSDoc in account deletion implementation | Open -- informational |
+| OBS-V019-02 | Verifier (TASK-019) | Stale TODO comment in App.jsx | Open -- informational |
 
 ---
 
@@ -162,6 +283,7 @@ This process was codified after Cycle 1 demo validation on 2026-03-21.
 | Fitness Functions Index | `process/architect/fitness-functions.md` | v1 |
 | Audit -- Architecture | `process/auditor/audit-architecture-v1.md` | v1 (PASS) |
 | Task Plan | `process/planner/task-plan-v1.md` | v1 (amended: +TASK-024 for Cycle 2) |
+| Task Plan -- Cycle 2 | `process/planner/task-plan-v2.md` | v2 (10 tasks, 3 P1 + 7 P2) |
 | Environment Contract | `process/devops/environment-contract-v1.md` | v1 |
 | Verification Report -- TASK-016 | `process/verifier/verification-report-task-016.md` | Iteration 2 (PASS 6/6) |
 | Verification Report -- TASK-002 | `process/verifier/verification-report-task-002.md` | Iteration 1 (PASS 10/10) |
@@ -176,6 +298,34 @@ This process was codified after Cycle 1 demo validation on 2026-03-21.
 | Security Report -- Cycle 1 | `process/sentinel/security-reports/cycle-1-security.md` | v1 (SEC-001 DEFERRED TO CYCLE 2) |
 | Demo Sign-off Briefing -- Cycle 1 | `process/orchestrator/demo-signoff-briefing-cycle-1.md` | v1 |
 | Demo Screenshots -- Cycle 1 | `tests/demo/TASK-{003,007,008,009,011}/` | 12 screenshots (commit c849d8b) |
+| Verification Report -- TASK-024 | CI run 23376742012 | PASS (6/6 AC, 1 iteration) |
+| Demo Script -- TASK-024 | `tests/demo/TASK-024-demo.md` | v1 |
+| Routing Instruction -- Builder TASK-014 | `process/orchestrator/routing-builder-task-014.md` | v1 |
+| Verification Report -- TASK-014 | CI run 23383138143 | PASS (10/10 AC, 1 iteration) |
+| Routing Instruction -- Builder TASK-015 | `process/orchestrator/routing-builder-task-015.md` | v1 |
+| Verification Report -- TASK-015 | CI run 23383805381 | PASS (8/8 AC, 1 iteration) |
+| Routing Instruction -- Builder TASK-017 | `process/orchestrator/routing-builder-task-017.md` | v1 |
+| Verification Report -- TASK-017 | CI run 23385024748 | PASS (9/9 AC, 2 iterations) |
+| Routing Instruction -- DevOps TASK-021 | `process/orchestrator/routing-devops-task-021.md` | v1 |
+| Verification Report -- TASK-021 | CI run 23385582169 | PASS (8/8 AC, commit 49c6fa8) |
+| Routing Instruction -- Builder TASK-018 | `process/orchestrator/routing-builder-task-018.md` | v1 |
+| Verification Report -- TASK-018 | CI run 23386191945 | PASS (6/6 AC, 1 iteration, commit ee1c869) |
+| Routing Instruction -- Analyst REQ-018/REQ-019 | `process/orchestrator/routing-analyst-req-018-019.md` | v1 |
+| Verification Report -- TASK-019 | CI runs 23386531154 + 23386712360 | PASS (5/5 AC, 1 iteration, commits 4f5fbea + 9f9caa8) |
+| Routing Instruction -- Builder TASK-020 | `process/orchestrator/routing-builder-task-020.md` | v1 |
+| Verification Report -- TASK-020 | CI run 23387142494 | PASS (FF-D24/FF-D04/FF-D12/FF-D16 passing, 1 iteration, commit 6ee066e) |
+| Requirements List | `process/analyst/requirements-v3.md` | v3 (REQ-018 + REQ-019 added) |
+| Routing Instruction -- Auditor REQ-018/REQ-019 | `process/orchestrator/routing-auditor-req-018-019.md` | v1 |
+| Verification Report -- TASK-025 | CI run 23388053947 | PASS (8/8 AC, 2 iterations, commits 17b8159 + 873daa7) |
+| Verification Report -- TASK-026 | CI green | PASS (7/7 AC, 1 iteration, 510/510 frontend tests) |
+| Routing Instruction -- Sentinel Cycle 2 | `process/orchestrator/routing-sentinel-cycle-2.md` | v1 |
+| Routing Instruction -- Analyst Cycle 3 Requirements | `process/orchestrator/routing-analyst-cycle3-requirements.md` | v1 |
+| Requirements List | `process/analyst/requirements-v4.md` | v4 (REQ-020 + REQ-021 + REQ-022 added) |
+| Audit -- Requirements v4 | `process/auditor/audit-requirements-v4.md` | v4 (PASS, 0 blocking, 9 non-blocking) |
+| ADR-010 | `process/architect/adr/ADR-010-tagging-schema.md` | v1 (tagging schema, junction table, search vector integration) |
+| ADR-011 | `process/architect/adr/ADR-011-bulk-export.md` | v1 (bulk ZIP export backend endpoint) |
+| Audit -- Architecture Cycle 3 | `process/auditor/audit-architecture-cycle3-adrs.md` | PASS (0 blocking, 4 non-blocking) |
+| Task Plan -- Cycle 3 | `process/planner/task-plan-v3.md` | v3 (7 tasks: 4 Builder, 2 DevOps, 1 Sentinel) |
 
 ---
 
@@ -354,3 +504,5 @@ This process was codified after Cycle 1 demo validation on 2026-03-21.
 | Architecture Gate | 2026-03-19 | Approved -- 9 ADRs, 55 fitness functions, full requirements coverage, AUDIT-003 resolved |
 | Plan Gate | 2026-03-19 | Approved -- 23 tasks, 3 cycles, 1 deferred (TASK-019 account deletion) |
 | Demo Sign-off -- Cycle 1 | 2026-03-21 | Accepted -- 14/14 tasks, 12 screenshots reviewed, demo validation process codified |
+| Plan Gate -- Cycle 2 | 2026-03-21 | Approved -- 10 tasks, 2 untraced features accepted with requirement creation before Builder |
+| Demo Sign-off -- Cycle 2 | 2026-03-21 | Approved -- 10/10 tasks, Playwright validation complete, two inline bug fixes, screenshots committed |

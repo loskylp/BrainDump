@@ -16,6 +16,7 @@
  *        /api/notes        -- note CRUD (TASK-006/009/010)
  *        /api/notes/:id    -- version history routes (TASK-013, mergeParams)
  *        /api/folders      -- folder CRUD (TASK-017)
+ *        /api/tags         -- tag CRUD (TASK-027, ADR-010)
  *        /api/search       -- full-text search (TASK-014)
  *   6. Static file serving -- serves frontend build in production
  *   7. SPA fallback        -- serves index.html for client-side routes in production
@@ -45,6 +46,7 @@ const authRouter = require('./routes/auth');
 const notesRouter = require('./routes/notes');
 const versionsRouter = require('./routes/versions');
 const foldersRouter = require('./routes/folders');
+const tagsRouter = require('./routes/tags');
 const searchRouter = require('./routes/search');
 const sessionMiddleware = require('./config/session');
 
@@ -89,6 +91,8 @@ app.use('/api/notes', notesRouter);
 app.use('/api/notes/:id', versionsRouter);
 // Folder routes (ownership guard applied within the router)
 app.use('/api/folders', foldersRouter);
+// Tag routes (ADR-010, TASK-027)
+app.use('/api/tags', tagsRouter);
 // Full-text search routes (TASK-014)
 app.use('/api/search', searchRouter);
 

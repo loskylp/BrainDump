@@ -12,7 +12,7 @@
 
 'use strict';
 
-const { sequelize } = require('../models');
+const { sequelize, Tag, NoteTag } = require('../models');
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -122,6 +122,33 @@ async function search(userId, rawQuery) {
       user_id: userId,
     },
   });
+
+  // Enrich results with tag metadata (ADR-010)
+  if (rows.length > 0) {
+    const noteIds = rows.map((r) => r.id);
+    const { Op } = require('sequelize');
+
+    const noteTags = await NoteTag.findAll({
+      where: { note_id: { [Op.in]: noteIds } },
+      include: [{ model: Tag, as: 'tag', attributes: ['id', 'name'] }],
+    });
+
+    // Build a map of noteId -> tags
+    const tagMap = {};
+    for (const nt of noteTags) {
+      if (!tagMap[nt.note_id]) {
+        tagMap[nt.note_id] = [];
+      }
+      if (nt.tag) {
+        tagMap[nt.note_id].push({ id: nt.tag.id, name: nt.tag.name });
+      }
+    }
+
+    // Attach tags to each result
+    for (const row of rows) {
+      row.tags = tagMap[row.id] || [];
+    }
+  }
 
   return rows;
 }

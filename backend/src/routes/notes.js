@@ -18,6 +18,7 @@ const authenticate = require('../middleware/authenticate');
 const ownershipGuard = require('../middleware/ownershipGuard');
 const rlsContext = require('../middleware/rlsContext');
 const noteService = require('../services/noteService');
+const tagService = require('../services/tagService');
 
 // Apply authentication and RLS context to all notes routes
 router.use(authenticate);
@@ -27,17 +28,20 @@ router.use(rlsContext);
  * GET /api/notes
  *
  * Returns all notes belonging to the authenticated user, sorted by updated_at DESC.
+ * Optionally filters by tag IDs (OR logic) via ?tags=id1,id2 query parameter.
  *
- * @returns {200} { notes: Array<{ id, title, updated_at, folder_id }> }
+ * @returns {200} { notes: Array<{ id, title, updated_at, folder_id, tags: Array<{ id, name }> }> }
  *   NOTE: body is excluded from list responses for performance.
  *
  * Postconditions:
  *   - Returns only notes where user_id = req.session.userId
  *   - Empty array when user has no notes (not 404)
+ *   - When tags query param is provided, only notes matching ANY tag are returned (OR logic)
  */
 router.get('/', async (req, res, next) => {
   try {
-    const notes = await noteService.getNotes(req.session.userId);
+    const tagIds = req.query.tags ? req.query.tags.split(',').filter(Boolean) : null;
+    const notes = await tagService.getNotesWithTags(req.session.userId, tagIds);
     res.json({ notes });
   } catch (err) {
     next(err);
@@ -131,6 +135,49 @@ router.put('/:id', ownershipGuard('Note', 'id'), async (req, res, next) => {
 router.delete('/:id', ownershipGuard('Note', 'id'), async (req, res, next) => {
   try {
     await noteService.deleteNote(req.params.id, req.session.userId);
+    res.status(204).send();
+  } catch (err) {
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    next(err);
+  }
+});
+
+/**
+ * POST /api/notes/:id/tags
+ *
+ * Adds a tag to a note. Accepts either { tagId } (existing tag) or
+ * { name } (inline creation -- creates the tag if it does not exist).
+ *
+ * @returns {200} { tag: { id, name, created_at } }
+ * @returns {404} { error: "Not found" } -- note or tag does not exist or belongs to another user
+ * @returns {400} { error: "VALIDATION_ERROR" } -- invalid tag name
+ */
+router.post('/:id/tags', async (req, res, next) => {
+  try {
+    const { tagId, name } = req.body || {};
+    const tag = await tagService.addTagToNote(req.params.id, req.session.userId, { tagId, name });
+    res.json({ tag });
+  } catch (err) {
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    next(err);
+  }
+});
+
+/**
+ * DELETE /api/notes/:id/tags/:tagId
+ *
+ * Removes a tag association from a note.
+ *
+ * @returns {204} (no body)
+ * @returns {404} { error: "Not found" } -- note, tag, or association does not exist
+ */
+router.delete('/:id/tags/:tagId', async (req, res, next) => {
+  try {
+    await tagService.removeTagFromNote(req.params.id, req.params.tagId, req.session.userId);
     res.status(204).send();
   } catch (err) {
     if (err.message === 'NOT_FOUND') {
