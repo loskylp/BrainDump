@@ -278,4 +278,44 @@ async function resetPassword(token, newPassword) {
   );
 }
 
-module.exports = { register, login, logout, forgotPassword, resetPassword };
+/**
+ * Permanently deletes the authenticated user's account after verifying their
+ * password. All associated data (notes, versions, folders, reset tokens,
+ * sessions) is removed atomically via the DB-level CASCADE constraint on the
+ * users table (ADR-003).
+ *
+ * @param {string} userId - UUID of the user to delete
+ * @param {string} password - Plaintext password for confirmation
+ * @returns {Promise<void>}
+ * @throws {Error} code='INVALID_CREDENTIALS' if password does not match
+ * @throws {Error} code='INVALID_CREDENTIALS' if userId references no user
+ *
+ * @precondition userId is a valid UUID present in the users table
+ * @precondition password is the user's current plaintext password
+ * @postcondition User row deleted; all owned data CASCADE-deleted at DB level
+ * @postcondition Plaintext password is never stored or logged
+ */
+async function deleteAccount(userId, password) {
+  const user = await User.findByPk(userId);
+
+  const invalidCredentials = () => {
+    const err = new Error('Invalid password');
+    err.code = 'INVALID_CREDENTIALS';
+    return err;
+  };
+
+  if (!user) {
+    throw invalidCredentials();
+  }
+
+  const passwordMatches = await user.comparePassword(password);
+  if (!passwordMatches) {
+    throw invalidCredentials();
+  }
+
+  // Destroying the user row triggers DB-level CASCADE deletion of all owned
+  // data: notes, note_versions, folders, password_reset_tokens, sessions.
+  await user.destroy();
+}
+
+module.exports = { register, login, logout, forgotPassword, resetPassword, deleteAccount };

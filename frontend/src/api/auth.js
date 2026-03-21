@@ -5,7 +5,7 @@
  * corresponds to one backend route in src/routes/auth.js.
  */
 
-import { post } from './client.js';
+import { post, apiRequest } from './client.js';
 
 /**
  * Registers a new user account.
@@ -79,8 +79,5 @@ export async function resetPassword(token, newPassword) {
  * @throws {ApiError} 401 if the session is not active
  */
 export async function deleteAccount(password) {
-  // TODO: TASK-019 -- implement:
-  // del() has no body param; use apiRequest directly:
-  // return apiRequest('/api/auth/account', { method: 'DELETE', body: { password } });
-  throw new Error('Not implemented');
+  return apiRequest('/api/auth/account', { method: 'DELETE', body: { password } });
 }

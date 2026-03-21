@@ -116,13 +116,14 @@ function NoteItem({ note, isActive, onSelect }) {
  * @param {function} props.onCreateNote - Called with no arguments when the "New note" button is clicked.
  * @param {{ username: string, email: string }|null} props.user - Authenticated user info.
  * @param {function} props.onLogout - Called with no arguments when the logout button is clicked.
+ * @param {function} [props.onSettings] - Called with no arguments when the account settings link is clicked.
  * @returns {JSX.Element}
  *
  * @precondition notes is an array (may be empty)
  * @postcondition Renders a note list or empty state based on notes.length
  * @postcondition Active note is identified via aria-current="page" on its list item
  */
-function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNote, user, onLogout }) {
+function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNote, user, onLogout, onSettings }) {
   return (
     <div className="flex flex-col h-full bg-bg-secondary">
 
@@ -158,7 +159,7 @@ function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNote, user, onLogo
         )}
       </div>
 
-      {/* Footer: user info and logout */}
+      {/* Footer: user info, account settings link, and logout */}
       <div className="px-4 py-3 border-t border-border flex-shrink-0">
         {user && (
           <p
@@ -167,6 +168,16 @@ function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNote, user, onLogo
           >
             {user.username}
           </p>
+        )}
+        {onSettings && (
+          <button
+            type="button"
+            data-testid="account-settings-link"
+            onClick={onSettings}
+            className="w-full py-1 px-3 text-sm border border-border text-text-secondary hover:text-text-primary hover:border-text-secondary rounded focus:outline-none focus:ring-2 focus:ring-accent mb-2"
+          >
+            Account settings
+          </button>
         )}
         <button
           type="button"

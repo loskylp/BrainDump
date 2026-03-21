@@ -257,15 +257,70 @@ router.post('/reset-password', async (req, res, next) => {
  *   - On 200: the current session is destroyed and the session cookie is cleared
  *   - On 200: the user cannot log in again with the deleted credentials
  */
-// TODO: TASK-019 -- implement
+/**
+ * DELETE /api/auth/account
+ *
+ * Permanently deletes the authenticated user's account and all associated
+ * data (notes, versions, folders, reset tokens, sessions). The CASCADE
+ * deletes defined in ADR-003 handle all associated data atomically at the
+ * database level -- no application-level multi-table orchestration is needed.
+ *
+ * Request body:
+ *   { password: string } -- required to confirm the deletion intent (prevents
+ *   accidental deletion from active sessions)
+ *
+ * @returns {200} { message: "Account deleted successfully" }
+ * @returns {400} { error: "VALIDATION_ERROR", message: string } -- password missing
+ * @returns {401} { error: "INVALID_CREDENTIALS" } -- password does not match
+ * @returns {401} { error: "Authentication required" } -- no active session
+ *
+ * Preconditions:
+ *   - req.session.userId references a valid user
+ *   - password in request body matches the stored bcrypt hash
+ *
+ * Postconditions:
+ *   - On 200: users row deleted (CASCADE removes all notes, versions, folders,
+ *             reset tokens, and sessions for this user)
+ *   - On 200: the current session is destroyed and the session cookie is cleared
+ *   - On 200: the user cannot log in again with the deleted credentials
+ */
 router.delete('/account', async (req, res, next) => {
-  // TODO: TASK-019 -- implement:
-  // 1. Require authentication (check req.session.userId)
-  // 2. Validate password against stored hash (authService.verifyPassword)
-  // 3. Delete the user row (CASCADE handles all associated data)
-  // 4. Destroy the session and clear the cookie
-  // 5. Return 200 { message: 'Account deleted' }
-  next(new Error('Not implemented'));
+  try {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { password } = req.body;
+
+    if (!password || typeof password !== 'string' || password.length === 0) {
+      return res.status(400).json({
+        error: 'VALIDATION_ERROR',
+        message: 'Password is required',
+      });
+    }
+
+    await authService.deleteAccount(req.session.userId, password);
+
+    // Destroy the session before responding so the cookie is cleared client-side
+    await new Promise((resolve, reject) => {
+      req.session.destroy((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    res.clearCookie('connect.sid', {
+      httpOnly: true,
+      sameSite: 'strict',
+    });
+
+    res.status(200).json({ message: 'Account deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

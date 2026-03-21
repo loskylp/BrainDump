@@ -32,8 +32,7 @@ import RegisterPage from './pages/RegisterPage.jsx';
 import WorkspacePage from './pages/WorkspacePage.jsx';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
-// TODO: TASK-019 -- uncomment when implementing account settings page
-// import AccountSettingsPage from './pages/AccountSettingsPage.jsx';
+import AccountSettingsPage from './pages/AccountSettingsPage.jsx';
 
 /**
  * Landing route wrapper.
@@ -69,8 +68,14 @@ function App() {
       />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      {/* TODO: TASK-019 -- add this route when implementing account settings */}
-      {/* <Route path="/settings" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} /> */}
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <AccountSettingsPage />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

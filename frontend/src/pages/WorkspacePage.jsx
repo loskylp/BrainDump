@@ -830,6 +830,7 @@ function WorkspacePage() {
             onCreateNote={handleCreateNote}
             user={user}
             onLogout={handleLogout}
+            onSettings={() => navigate('/settings')}
           />
         )}
       </div>
