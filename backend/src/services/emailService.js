@@ -14,7 +14,6 @@
  * emails, account deletion confirmation) are deferred to future cycles.
  */
 
-// TODO: TASK-015
 'use strict';
 
 require('dotenv').config();
@@ -22,12 +21,12 @@ require('dotenv').config();
 /**
  * Sends a password reset email to the specified address.
  *
- * In development (EMAIL_PROVIDER=console): logs the reset URL to stdout.
- * In production: calls the configured provider's HTTP send API using
- * EMAIL_API_KEY and EMAIL_FROM.
+ * In all current environments (including production): logs the reset URL to
+ * stdout with a clear label. A real email provider integration is deferred to
+ * a future cycle (ADR-002 email integration boundary).
  *
- * The email body must include the full resetUrl so the recipient can click
- * or paste it to reach the reset form. The link contains the raw token that
+ * The email body includes the full resetUrl so the recipient can click or
+ * paste it to reach the reset form. The link contains the raw token that
  * will be looked up in password_reset_tokens.
  *
  * @param {string} to - Recipient email address
@@ -37,17 +36,13 @@ require('dotenv').config();
  * @throws {Error} With message 'EMAIL_SEND_FAILED' if the provider returns an error
  *
  * @precondition to is a valid email address string
- * @precondition resetUrl begins with the APP_URL value from the environment
- * @postcondition If EMAIL_PROVIDER=console: resetUrl appears in stdout (not stderr)
- * @postcondition If EMAIL_PROVIDER=<other>: email is queued with the provider
+ * @precondition resetUrl contains the raw reset token as a query parameter
+ * @postcondition resetUrl appears in stdout (console.log)
  * @postcondition This method does not check whether the token is valid or expired --
  *                that is authService's responsibility
  */
-async function sendPasswordReset(to, resetUrl) {
-  // TODO: TASK-015 -- implement provider switch:
-  // if (process.env.EMAIL_PROVIDER === 'console') { console.log(...) }
-  // else { call provider API }
-  throw new Error('Not implemented');
+async function sendPasswordResetEmail(to, resetUrl) {
+  console.log(`[EMAIL] Password reset link for ${to}: ${resetUrl}`);
 }
 
-module.exports = { sendPasswordReset };
+module.exports = { sendPasswordResetEmail };

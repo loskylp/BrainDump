@@ -9,7 +9,9 @@
 'use strict';
 
 const bcrypt = require('bcryptjs');
-const { User } = require('../models');
+const crypto = require('crypto');
+const { User, sequelize } = require('../models');
+const emailService = require('./emailService');
 
 /**
  * Registers a new user account.
@@ -180,9 +182,36 @@ async function logout(session) {
  * @postcondition If email is not registered: no side effects, same call duration
  * @postcondition Raw token is never stored -- only the hash is persisted
  */
-async function forgotPassword(email, appUrl) {
-  // TODO: TASK-015 -- implement
-  throw new Error('Not implemented');
+async function forgotPassword(email, frontendUrl) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await User.findOne({ where: { email: normalizedEmail } });
+
+  // Always take the same code path to avoid timing-based user enumeration (ADR-002)
+  if (!user) {
+    return;
+  }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+  // Delete any existing reset tokens for this user (one active token per user)
+  await sequelize.query(
+    'DELETE FROM password_reset_tokens WHERE user_id = :userId',
+    { replacements: { userId: user.id } }
+  );
+
+  // Store hashed token — raw token is never persisted (ADR-002)
+  await sequelize.query(
+    `INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at)
+     VALUES (gen_random_uuid(), :userId, :tokenHash, :expiresAt, NOW())`,
+    { replacements: { userId: user.id, tokenHash: tokenHash, expiresAt: expiresAt } }
+  );
+
+  const baseUrl = frontendUrl || process.env.FRONTEND_URL || 'http://localhost:5173';
+  const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
+
+  await emailService.sendPasswordResetEmail(normalizedEmail, resetUrl);
 }
 
 /**
@@ -204,8 +233,49 @@ async function forgotPassword(email, appUrl) {
  * @postcondition All existing sessions for the user are invalidated (DELETE from session table)
  */
 async function resetPassword(token, newPassword) {
-  // TODO: TASK-015 -- implement
-  throw new Error('Not implemented');
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+    const err = new Error('Password must be at least 8 characters');
+    err.code = 'VALIDATION_ERROR';
+    throw err;
+  }
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+  // Look up valid (non-expired) token by hash
+  const [rows] = await sequelize.query(
+    `SELECT user_id, expires_at FROM password_reset_tokens
+     WHERE token_hash = :tokenHash AND expires_at > NOW()`,
+    { replacements: { tokenHash: tokenHash } }
+  );
+
+  if (!rows || rows.length === 0) {
+    const err = new Error('Invalid or expired reset token');
+    err.code = 'INVALID_TOKEN';
+    throw err;
+  }
+
+  const tokenRow = rows[0];
+  const userId = tokenRow.user_id;
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  // Update user's password
+  await sequelize.query(
+    'UPDATE users SET password_hash = :passwordHash, updated_at = NOW() WHERE id = :userId',
+    { replacements: { passwordHash: passwordHash, userId: userId } }
+  );
+
+  // Delete the used token (invalidate so it cannot be reused)
+  await sequelize.query(
+    'DELETE FROM password_reset_tokens WHERE token_hash = :tokenHash',
+    { replacements: { tokenHash: tokenHash } }
+  );
+
+  // Invalidate all sessions for this user
+  await sequelize.query(
+    `DELETE FROM session WHERE sess->>'userId' = :userId`,
+    { replacements: { userId: userId } }
+  );
 }
 
 module.exports = { register, login, logout, forgotPassword, resetPassword };

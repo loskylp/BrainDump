@@ -5,7 +5,7 @@
  * corresponds to one backend route in src/routes/auth.js.
  */
 
-import { post } from './client.js';
+import { post, apiRequest } from './client.js';
 
 /**
  * Registers a new user account.
@@ -51,8 +51,7 @@ export async function logout() {
  *   NOTE: Always returns 200 regardless of whether the email is registered.
  */
 export async function forgotPassword(email) {
-  // TODO: TASK-015 -- implement: post('/api/auth/forgot-password', { email })
-  throw new Error('Not implemented');
+  return post('/api/auth/forgot-password', { email });
 }
 
 /**
@@ -64,6 +63,24 @@ export async function forgotPassword(email) {
  * @throws {ApiError} 400 if token is invalid, expired, or newPassword is too short
  */
 export async function resetPassword(token, newPassword) {
-  // TODO: TASK-015 -- implement: post('/api/auth/reset-password', { token, newPassword })
+  return post('/api/auth/reset-password', { token, password: newPassword });
+}
+
+/**
+ * Permanently deletes the authenticated user's account.
+ *
+ * The user must supply their current password as confirmation. The server
+ * validates the password before deleting the account and all associated data
+ * (notes, versions, folders, reset tokens, sessions) via CASCADE (ADR-003).
+ *
+ * @param {string} password - Current plaintext password for confirmation
+ * @returns {Promise<{ message: string }>}
+ * @throws {ApiError} 401 if the password does not match
+ * @throws {ApiError} 401 if the session is not active
+ */
+export async function deleteAccount(password) {
+  // TODO: TASK-019 -- implement:
+  // del() has no body param; use apiRequest directly:
+  // return apiRequest('/api/auth/account', { method: 'DELETE', body: { password } });
   throw new Error('Not implemented');
 }

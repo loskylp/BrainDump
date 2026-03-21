@@ -176,8 +176,22 @@ router.post('/logout', async (req, res, next) => {
  *   - Response time is similar for both cases (no timing-based enumeration)
  */
 router.post('/forgot-password', async (req, res, next) => {
-  // TODO: TASK-015 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const { email } = req.body;
+
+    if (!email || typeof email !== 'string' || email.trim().length === 0) {
+      return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Email is required' });
+    }
+
+    // Delegate to authService — always returns the same response regardless of email existence
+    await authService.forgotPassword(email);
+
+    res.status(200).json({
+      message: 'If an account with that email exists, a password reset link has been sent.',
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
@@ -198,8 +212,23 @@ router.post('/forgot-password', async (req, res, next) => {
  *   - On 200: all existing sessions for the user invalidated
  */
 router.post('/reset-password', async (req, res, next) => {
-  // TODO: TASK-015 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const { token, password } = req.body;
+
+    if (!token || typeof token !== 'string' || token.trim().length === 0) {
+      return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Token is required' });
+    }
+
+    if (!password || typeof password !== 'string' || password.length === 0) {
+      return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Password is required' });
+    }
+
+    await authService.resetPassword(token, password);
+
+    res.status(200).json({ message: 'Password has been reset successfully' });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
