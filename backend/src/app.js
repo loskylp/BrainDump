@@ -94,7 +94,7 @@ app.use('/api/search', searchRouter);
 
 // --- Static file serving (production) ---
 
-if (process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
   const frontendDist = path.join(__dirname, '..', 'public');
   app.use(express.static(frontendDist));
 
