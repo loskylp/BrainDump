@@ -62,7 +62,7 @@ describe('tags API', () => {
 
       await getTags();
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(fetch).toHaveBeenCalledWith(
         '/api/tags',
         expect.objectContaining({ credentials: 'include' })
       );
