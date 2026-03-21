@@ -5,7 +5,6 @@
  * to one route in the backend's src/routes/notes.js.
  */
 
-// TODO: TASK-009 (updateNote), TASK-010 (deleteNote)
 import { get, post, put, del } from './client.js';
 
 /**
@@ -55,8 +54,7 @@ export async function getNote(noteId) {
  * @throws {ApiError} 404 if note not found or not owned by authenticated user
  */
 export async function updateNote(noteId, updates) {
-  // TODO: TASK-009 -- implement: put(`/api/notes/${noteId}`, updates)
-  throw new Error('Not implemented');
+  return put(`/api/notes/${noteId}`, updates);
 }
 
 /**

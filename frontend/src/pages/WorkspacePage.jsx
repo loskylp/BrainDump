@@ -11,15 +11,19 @@
  *   - notes: array of all user note summaries (for the sidebar catalog, TASK-008)
  *   - activeNoteId: UUID of the currently open note (null if none selected)
  *   - activeNote: full note object fetched from GET /api/notes/:id (null if none selected)
+ *   - editorTitle: the current title string in the title input (TASK-009).
+ *     Initialised from activeNote.title when a note is opened; updated on every title keystroke.
  *   - editorBody: the current content of the editor (string). Initialised from
  *     activeNote.body when a note is opened; updated on every keystroke.
  *     This is the single source of truth for the editor and preview panels.
  *
  * Data flow:
  *   Mount -> getNotes() -> populate notes state in Sidebar
- *   Sidebar.onSelectNote -> set activeNoteId -> useEffect fires -> getNote(activeNoteId) -> set activeNote -> set editorBody
+ *   Sidebar.onSelectNote -> set activeNoteId -> useEffect fires -> getNote(activeNoteId) -> set activeNote -> set editorTitle + editorBody
  *   Sidebar.onCreateNote -> createNote() -> prepend to notes state -> set activeNoteId
+ *   Title input.onChange -> update editorTitle
  *   Editor.onChange -> update editorBody -> Preview re-renders with new value (AC-2, FF-D02)
+ *   Save button click or Cmd/Ctrl+S -> updateNote(activeNoteId, { title, body }) (TASK-009)
  *   editorBody change -> useAutoSave debounce timer resets (TASK-012)
  *   editorBody change -> useVersionTimer idle timer resets (TASK-013)
  *
@@ -36,7 +40,7 @@ import Sidebar from '../components/common/Sidebar.jsx';
 import Editor from '../components/editor/Editor.jsx';
 import Preview from '../components/editor/Preview.jsx';
 import { useAuth } from '../hooks/useAuth.js';
-import { getNotes, createNote, getNote } from '../api/notes.js';
+import { getNotes, createNote, getNote, updateNote } from '../api/notes.js';
 
 /**
  * @returns {JSX.Element}
@@ -44,9 +48,10 @@ import { getNotes, createNote, getNote } from '../api/notes.js';
  * @precondition User is authenticated (ProtectedRoute ensures this)
  * @postcondition WorkspaceLayout renders with sidebar, Editor, and Preview panels
  * @postcondition Sidebar displays all user notes fetched from GET /api/notes on mount
- * @postcondition Selecting a note triggers GET /api/notes/:id and loads body into Editor
+ * @postcondition Selecting a note triggers GET /api/notes/:id and loads title and body into the editor area
  * @postcondition Editor.onChange updates editorBody; Preview re-renders with the new value
  * @postcondition Creating a note prepends it to the sidebar list and sets it as active
+ * @postcondition Save button and Cmd/Ctrl+S send title and body to PUT /api/notes/:id (TASK-009)
  */
 function WorkspacePage() {
   const { user, logout } = useAuth();
@@ -61,9 +66,17 @@ function WorkspacePage() {
   /**
    * Full content of the currently open note fetched from GET /api/notes/:id.
    * Null when no note is selected or the fetch has not yet resolved.
-   * @type {[{title: string, body: string}|null, Function]}
+   * @type {[{id: string, title: string, body: string}|null, Function]}
    */
   const [activeNote, setActiveNote] = useState(null);
+
+  /**
+   * Current title of the note as displayed in the title input field.
+   * Initialised from activeNote.title when a note is opened.
+   * Updated on every title keystroke via handleTitleChange.
+   * @type {[string, Function]}
+   */
+  const [editorTitle, setEditorTitle] = useState('');
 
   /**
    * Current content of the editor (Markdown source string).
@@ -94,7 +107,6 @@ function WorkspacePage() {
         }
       } catch {
         // Network or auth errors are not surfaced here in iteration 1.
-        // TASK-009 will add error state wiring.
       }
     }
 
@@ -112,6 +124,7 @@ function WorkspacePage() {
   useEffect(() => {
     if (!activeNoteId) {
       setActiveNote(null);
+      setEditorTitle('');
       setEditorBody('');
       return;
     }
@@ -120,8 +133,9 @@ function WorkspacePage() {
 
     /**
      * Fetches the full note content from GET /api/notes/:id and stores it in
-     * activeNote state. Also initialises editorBody from the fetched body so
-     * the Editor displays the persisted content immediately after selection.
+     * activeNote state. Initialises editorTitle and editorBody from the fetched
+     * note so the title input and Editor display persisted content immediately
+     * after selection (AC-5).
      * Silently ignores the result if the component unmounted or the active note
      * changed again before the fetch resolved (cancelled flag).
      */
@@ -130,12 +144,14 @@ function WorkspacePage() {
         const data = await getNote(activeNoteId);
         if (!cancelled) {
           setActiveNote(data.note);
+          setEditorTitle(data.note.title || '');
           setEditorBody(data.note.body || '');
         }
       } catch {
         // Note not found or network error — leave editor empty.
         if (!cancelled) {
           setActiveNote(null);
+          setEditorTitle('');
           setEditorBody('');
         }
       }
@@ -147,6 +163,34 @@ function WorkspacePage() {
       cancelled = true;
     };
   }, [activeNoteId]);
+
+  // ---------------------------------------------------------------------------
+  // Keyboard shortcut: Cmd+S / Ctrl+S triggers save (AC-3)
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    /**
+     * Handles the global keydown event to intercept Cmd+S (macOS) and
+     * Ctrl+S (Windows/Linux). When a note is active, calls handleSave.
+     * Prevents the browser's default "Save page" dialog.
+     *
+     * @param {KeyboardEvent} e
+     */
+    function handleKeyDown(e) {
+      if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        if (activeNoteId) {
+          handleSave();
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNoteId, editorTitle, editorBody]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -195,6 +239,15 @@ function WorkspacePage() {
   }, []);
 
   /**
+   * Updates editorTitle when the user edits the title input field.
+   *
+   * @param {string} newTitle - New title string from the input
+   */
+  const handleTitleChange = useCallback((newTitle) => {
+    setEditorTitle(newTitle);
+  }, []);
+
+  /**
    * Updates editorBody on every keystroke from the Editor component.
    * This is intentionally unthrottled so the Preview re-renders immediately
    * without debounce (FF-D02: preview update < 100ms).
@@ -205,9 +258,68 @@ function WorkspacePage() {
     setEditorBody(newValue);
   }, []);
 
+  /**
+   * Sends the current title and body to PUT /api/notes/:id (manual save path).
+   *
+   * This is the TASK-009 manual save — not the auto-save path (TASK-012).
+   * Does NOT create a NoteVersion entry (that is versionService's job, ADR-004).
+   * Silently ignores save errors in iteration 1; error surface is TASK-012.
+   */
+  async function handleSave() {
+    if (!activeNoteId) {
+      return;
+    }
+    try {
+      await updateNote(activeNoteId, { title: editorTitle, body: editorBody });
+    } catch {
+      // Error state surfaced in a future iteration.
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  /**
+   * Renders the editor area: a title input, the CodeMirror editor, and a Save
+   * button. The title input is a plain text input above the editor. The Save
+   * button is visible only when a note is active (AC-3).
+   *
+   * @returns {JSX.Element}
+   */
+  function renderEditorPanel() {
+    return (
+      <div className="flex flex-col h-full">
+        {activeNoteId && (
+          <>
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-bg-editor">
+              <input
+                data-testid="note-title-input"
+                type="text"
+                value={editorTitle}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                placeholder="Note title"
+                className="flex-1 bg-transparent text-text-primary font-mono text-sm outline-none placeholder-text-secondary"
+              />
+              <button
+                data-testid="save-button"
+                onClick={handleSave}
+                className="px-3 py-1 text-xs font-mono text-text-primary bg-bg-secondary border border-border hover:bg-border transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </>
+        )}
+        <div className="flex-1 overflow-hidden border-r border-border">
+          <Editor
+            value={editorBody}
+            onChange={handleEditorChange}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <WorkspaceLayout
@@ -221,12 +333,7 @@ function WorkspacePage() {
           onLogout={handleLogout}
         />
       }
-      editor={
-        <Editor
-          value={editorBody}
-          onChange={handleEditorChange}
-        />
-      }
+      editor={renderEditorPanel()}
       preview={
         <Preview value={editorBody} />
       }

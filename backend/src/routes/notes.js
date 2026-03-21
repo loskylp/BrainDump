@@ -10,7 +10,6 @@
  * Version check path: POST /api/notes/:id/check-version (in versions.js)
  */
 
-// TODO: TASK-009 (PUT), TASK-010 (DELETE)
 'use strict';
 
 const express = require('express');
@@ -105,8 +104,13 @@ router.get('/:id', ownershipGuard('Note', 'id'), async (req, res, _next) => {
  *   - No NoteVersion row is created
  */
 router.put('/:id', ownershipGuard('Note', 'id'), async (req, res, next) => {
-  // TODO: TASK-009 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const { title, body, folderId } = req.body;
+    const note = await noteService.updateNote(req.params.id, req.session.userId, { title, body, folderId });
+    res.json({ note });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**

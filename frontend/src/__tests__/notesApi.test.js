@@ -1,15 +1,12 @@
 /**
- * TASK-008 -- Tests for api/notes.js getNotes and createNote functions.
- *
- * Verifies:
- *   - getNotes() calls GET /api/notes and returns the notes array
- *   - createNote() calls POST /api/notes and returns the created note
+ * Tests for api/notes.js: getNotes, createNote, getNote, and updateNote.
+ * Updated by TASK-009 to cover updateNote().
  *
  * The fetch global is stubbed for each test.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getNotes, createNote, getNote } from '../api/notes.js';
+import { getNotes, createNote, getNote, updateNote } from '../api/notes.js';
 
 describe('notes API', () => {
   beforeEach(() => {
@@ -171,6 +168,79 @@ describe('notes API', () => {
       vi.stubGlobal('fetch', mockFetch);
 
       await getNote(noteId);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        `/api/notes/${noteId}`,
+        expect.objectContaining({ credentials: 'include' })
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // updateNote (TASK-009)
+  // -------------------------------------------------------------------------
+
+  describe('updateNote', () => {
+    it('calls PUT /api/notes/:id with the given noteId', async () => {
+      const noteId = 'dddddddd-0000-0000-0000-000000000003';
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ note: { id: noteId, title: 'Updated', body: 'Content', updated_at: '2026-03-20T12:00:00.000Z' } }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      await updateNote(noteId, { title: 'Updated', body: 'Content' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        `/api/notes/${noteId}`,
+        expect.objectContaining({ method: 'PUT' })
+      );
+    });
+
+    it('sends title and body in the request body', async () => {
+      const noteId = 'dddddddd-0000-0000-0000-000000000003';
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ note: { id: noteId, title: 'New Title', body: 'New body', updated_at: '2026-03-20T12:00:00.000Z' } }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      await updateNote(noteId, { title: 'New Title', body: 'New body' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        `/api/notes/${noteId}`,
+        expect.objectContaining({
+          body: JSON.stringify({ title: 'New Title', body: 'New body' }),
+        })
+      );
+    });
+
+    it('returns the full response object including the updated note', async () => {
+      const noteId = 'dddddddd-0000-0000-0000-000000000003';
+      const note = { id: noteId, title: 'Updated', body: 'Content', updated_at: '2026-03-20T12:00:00.000Z' };
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ note }),
+      }));
+
+      const result = await updateNote(noteId, { title: 'Updated', body: 'Content' });
+
+      expect(result).toEqual({ note });
+    });
+
+    it('includes credentials: include in the request', async () => {
+      const noteId = 'dddddddd-0000-0000-0000-000000000003';
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ note: { id: noteId, title: '', body: '', updated_at: '' } }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      await updateNote(noteId, { title: 'T' });
 
       expect(mockFetch).toHaveBeenCalledWith(
         `/api/notes/${noteId}`,

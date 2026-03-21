@@ -8,7 +8,6 @@
  * and the database layer (RLS context set by rlsContext middleware, ADR-006).
  */
 
-// TODO: TASK-009 (updateNote), TASK-010 (deleteNote)
 'use strict';
 
 const { Note, NoteVersion, Folder, sequelize } = require('../models');
@@ -149,8 +148,35 @@ async function getNote(noteId, userId) {
  * @postcondition No NoteVersion row is created (that is versionService's job)
  */
 async function updateNote(noteId, userId, updates) {
-  // TODO: TASK-009 -- implement
-  throw new Error('Not implemented');
+  return sequelize.transaction(async (transaction) => {
+    await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+      replacements: { userId },
+      transaction,
+    });
+
+    const note = await Note.scope({ method: ['forUser', userId] }).findOne({
+      where: { id: noteId },
+      transaction,
+    });
+
+    if (!note) {
+      throw new Error('NOT_FOUND');
+    }
+
+    if (updates.title !== undefined) {
+      note.title = updates.title;
+    }
+    if (updates.body !== undefined) {
+      note.body = updates.body;
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'folderId')) {
+      note.folder_id = updates.folderId;
+    }
+
+    await note.save({ transaction });
+
+    return note;
+  });
 }
 
 /**
