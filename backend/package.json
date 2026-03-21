@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest --forceExit",
-    "test:unit": "NODE_ENV=test jest --forceExit --testPathIgnorePatterns=tests/integration",
+    "test:unit": "NODE_ENV=test jest --forceExit --testPathIgnorePatterns tests/integration tests/acceptance",
     "test:integration": "NODE_ENV=test jest --forceExit --testPathPattern=integration",
     "lint": "eslint src/",
     "migrate": "sequelize-cli db:migrate",

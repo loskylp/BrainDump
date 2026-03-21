@@ -182,10 +182,15 @@ describe('AC-2 [REQ-011]: ownership guard allows the resource owner through', ()
     expect(res.status).toBe(200);
   });
 
-  it('GET /api/notes/:id/versions — guard passes for the note owner (reaches stub handler, returns 500 not 404)', async () => {
+  it('GET /api/notes/:id/versions — guard passes for the note owner (reaches handler, returns 200 not 404)', async () => {
     // Given: a user with a session owns a note
     // When: that user requests the note's version list
-    // Then: ownershipGuard passes; stub handler produces 500
+    // Then: ownershipGuard passes; the implemented handler returns 200.
+    //
+    // ESC-002 (2026-03-21): assertion updated from toBe(500) to toBe(200).
+    // The original assertion was correct when TASK-005 was written — the handler was a stub.
+    // The versions route handler now returns HTTP 200 with the versions list. The underlying
+    // criterion (guard passes for the owner and does NOT return 404 or 401) is still satisfied.
     const user = await registerAndLogin({ username: 'owner', email: 'owner@example.com' });
     const note = await createNoteDirectly(user.userId);
 
@@ -195,7 +200,7 @@ describe('AC-2 [REQ-011]: ownership guard allows the resource owner through', ()
 
     expect(res.status).not.toBe(404);
     expect(res.status).not.toBe(401);
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(200);
   });
 
   it('GET /api/folders/:id — guard passes for the owning user (reaches stub handler, returns 500 not 404)', async () => {

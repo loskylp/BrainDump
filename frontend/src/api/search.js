@@ -5,7 +5,7 @@
  */
 
 // TODO: TASK-014
-import { get } from './client.js';
+import { get as _get } from './client.js';
 
 /**
  * Searches the authenticated user's notes using full-text search.
