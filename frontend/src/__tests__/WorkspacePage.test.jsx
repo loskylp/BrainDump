@@ -46,9 +46,18 @@ vi.mock('../utils/exportNote.js', () => ({
   exportNote: vi.fn(),
 }));
 
+vi.mock('../api/tags.js', () => ({
+  getTags: vi.fn(),
+  createTag: vi.fn(),
+  deleteTag: vi.fn(),
+  addTagToNote: vi.fn(),
+  removeTagFromNote: vi.fn(),
+}));
+
 import { useAuth } from '../hooks/useAuth.js';
 import { getNotes, getNote } from '../api/notes.js';
 import { exportNote } from '../utils/exportNote.js';
+import { getTags } from '../api/tags.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -60,6 +69,7 @@ beforeEach(() => {
     logout: vi.fn(),
   });
   getNotes.mockResolvedValue({ notes: [] });
+  getTags.mockResolvedValue({ tags: [] });
 });
 
 function renderWorkspacePage() {

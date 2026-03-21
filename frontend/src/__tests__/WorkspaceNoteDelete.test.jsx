@@ -50,6 +50,15 @@ vi.mock('../api/notes.js', () => ({
   deleteNote: (...args) => mockDeleteNote(...args),
 }));
 
+const mockGetTags = vi.fn().mockResolvedValue({ tags: [] });
+vi.mock('../api/tags.js', () => ({
+  getTags: (...args) => mockGetTags(...args),
+  createTag: vi.fn(),
+  deleteTag: vi.fn(),
+  addTagToNote: vi.fn(),
+  removeTagFromNote: vi.fn(),
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

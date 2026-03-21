@@ -26,6 +26,8 @@
  *   - sidebarOpen: boolean controlling sidebar overlay visibility on sub-desktop (TASK-018)
  *   - activePanel: 'sidebar'|'editor'|'preview' — which panel is visible on mobile (TASK-018)
  *   - showShortcutRef: boolean controlling the keyboard shortcut reference overlay (TASK-025)
+ *   - tags: array of all user-owned tags fetched from GET /api/tags (TASK-028)
+ *   - selectedTagIds: array of tag UUIDs currently active as sidebar filters (TASK-028)
  *
  * Data flow:
  *   Mount -> getNotes() + getFolders() -> populate notes and folders state
@@ -66,9 +68,12 @@ import { useVersionTimer } from '../hooks/useVersionTimer.js';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
 import VersionHistory from '../components/editor/VersionHistory.jsx';
 import { getNotes, createNote, getNote, updateNote, deleteNote } from '../api/notes.js';
+import { getTags } from '../api/tags.js';
 import { exportNote } from '../utils/exportNote.js';
 import { getFolders } from '../api/folders.js';
 import SearchBar from '../components/Search/SearchBar.jsx';
+import TagFilter from '../components/tags/TagFilter.jsx';
+import TagInput from '../components/tags/TagInput.jsx';
 
 /**
  * @returns {JSX.Element}
@@ -86,6 +91,9 @@ import SearchBar from '../components/Search/SearchBar.jsx';
  * @postcondition WorkspaceLayout receives sidebarOpen, onSidebarClose, activePanel, onPanelChange
  * @postcondition useKeyboardShortcuts wires global shortcuts (TASK-025)
  * @postcondition ShortcutReference overlay is rendered when showShortcutRef is true (TASK-025)
+ * @postcondition Tags fetched from GET /api/tags on mount; TagFilter in sidebar when tags exist (TASK-028)
+ * @postcondition TagInput shown below editor toolbar when a note is active (TASK-028)
+ * @postcondition Selecting tag filters re-fetches notes with ?tags= query parameter (TASK-028)
  */
 function WorkspacePage() {
   const { user, logout } = useAuth();
@@ -180,6 +188,25 @@ function WorkspacePage() {
   const [showShortcutRef, setShowShortcutRef] = useState(false);
 
   // ---------------------------------------------------------------------------
+  // Tagging state (TASK-028)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * All user-owned tags fetched from GET /api/tags on mount.
+   * Updated when a tag is created inline via TagInput (new tag prepended/merged).
+   * @type {[Array<{id: string, name: string, created_at: string}>, Function]}
+   */
+  const [tags, setTags] = useState([]);
+
+  /**
+   * UUIDs of tags currently selected as sidebar filters.
+   * When non-empty, notes are re-fetched with ?tags=id1,id2 (OR logic).
+   * Empty array means no filter — all notes are shown.
+   * @type {[string[], Function]}
+   */
+  const [selectedTagIds, setSelectedTagIds] = useState([]);
+
+  // ---------------------------------------------------------------------------
   // Editor imperative handle ref (TASK-025 AC-4, AC-5)
   // ---------------------------------------------------------------------------
 
@@ -190,6 +217,15 @@ function WorkspacePage() {
    * @type {React.RefObject<{boldSelection: function, italicSelection: function}>}
    */
   const editorRef = useRef(null);
+
+  /**
+   * Guards the selectedTagIds useEffect against running on the initial mount.
+   * The initial note load is handled by the mount useEffect; the
+   * selectedTagIds effect must skip its first invocation to avoid a
+   * duplicate getNotes call on startup.
+   * @type {React.RefObject<boolean>}
+   */
+  const isTagFilterMounted = useRef(false);
 
   // ---------------------------------------------------------------------------
   // Auto-save hook (TASK-012)
@@ -269,13 +305,68 @@ function WorkspacePage() {
       }
     }
 
+    /**
+     * Fetches all user-owned tags from GET /api/tags and stores them in the
+     * tags state for the TagFilter sidebar section. Silently ignores errors
+     * so a tag API failure does not break the note-taking flow.
+     */
+    async function loadTags() {
+      try {
+        const data = await getTags();
+        if (!cancelled) {
+          setTags(data.tags);
+        }
+      } catch {
+        // Tag load failure is non-fatal: tagging UI is simply not shown.
+      }
+    }
+
     loadNotes();
     loadFolders();
+    loadTags();
 
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // Re-fetch notes when selectedTagIds changes (TASK-028)
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    // Skip the initial render — the mount effect above handles the first load.
+    // This effect fires only when selectedTagIds changes after mount.
+    if (!isTagFilterMounted.current) {
+      isTagFilterMounted.current = true;
+      return;
+    }
+
+    let cancelled = false;
+
+    /**
+     * Re-fetches the note list with the current tag filter applied.
+     * When selectedTagIds is empty, fetches all notes (no filter).
+     * When selectedTagIds is non-empty, passes ?tags=id1,id2 to the API
+     * so only notes matching any selected tag are returned.
+     */
+    async function reloadNotes() {
+      try {
+        const data = await getNotes(selectedTagIds);
+        if (!cancelled) {
+          setNotes(data.notes);
+        }
+      } catch {
+        // Non-fatal: the sidebar retains its previous note list.
+      }
+    }
+
+    reloadNotes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTagIds]);
 
   // ---------------------------------------------------------------------------
   // Load note content when activeNoteId changes
@@ -700,6 +791,78 @@ function WorkspacePage() {
   );
 
   // ---------------------------------------------------------------------------
+  // Tag filter and note-tag handlers (TASK-028)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Toggles a tag filter on or off in the sidebar.
+   *
+   * When tagId is null, all active filters are cleared (signals the "Clear
+   * filters" button action from TagFilter). When tagId is a UUID, the filter
+   * is toggled: added if not present, removed if already present.
+   *
+   * Changing selectedTagIds triggers the selectedTagIds useEffect which
+   * re-fetches notes with the updated filter.
+   *
+   * @param {string|null} tagId - Tag UUID to toggle, or null to clear all
+   */
+  const handleTagFilterToggle = useCallback((tagId) => {
+    if (tagId === null) {
+      setSelectedTagIds([]);
+    } else {
+      setSelectedTagIds((prev) =>
+        prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+      );
+    }
+  }, []);
+
+  /**
+   * Called by TagInput when a tag has been successfully added to the active note.
+   *
+   * Updates the notes list to include the new tag on the active note's entry.
+   * Also ensures the tag is present in the global tags list (so the TagFilter
+   * shows it without requiring a full refetch).
+   *
+   * @param {{ id: string, name: string, created_at?: string }} tag - The added tag
+   */
+  const handleTagAdded = useCallback((tag) => {
+    setNotes((prev) =>
+      prev.map((n) => {
+        if (n.id !== activeNoteId) return n;
+        const existingTags = n.tags || [];
+        const alreadyPresent = existingTags.some((t) => t.id === tag.id);
+        return alreadyPresent ? n : { ...n, tags: [...existingTags, tag] };
+      })
+    );
+    setTags((prev) => {
+      const alreadyPresent = prev.some((t) => t.id === tag.id);
+      if (alreadyPresent) return prev;
+      return [...prev, { id: tag.id, name: tag.name, created_at: tag.created_at || '' }].sort(
+        (a, b) => a.name.localeCompare(b.name)
+      );
+    });
+  }, [activeNoteId]);
+
+  /**
+   * Called by TagInput when a tag has been successfully removed from the
+   * active note.
+   *
+   * Updates the notes list to remove the tag from the active note's entry.
+   * Does not remove the tag from the global tags list (other notes may still
+   * use it).
+   *
+   * @param {string} tagId - UUID of the removed tag
+   */
+  const handleTagRemoved = useCallback((tagId) => {
+    setNotes((prev) =>
+      prev.map((n) => {
+        if (n.id !== activeNoteId) return n;
+        return { ...n, tags: (n.tags || []).filter((t) => t.id !== tagId) };
+      })
+    );
+  }, [activeNoteId]);
+
+  // ---------------------------------------------------------------------------
   // Derived state: notes filtered by active folder
   // ---------------------------------------------------------------------------
 
@@ -802,6 +965,13 @@ function WorkspacePage() {
                 Export
               </button>
             </div>
+            {/* Tag input row — shown below the toolbar when a note is active (TASK-028) */}
+            <TagInput
+              noteId={activeNoteId}
+              existingTags={(notes.find((n) => n.id === activeNoteId) || {}).tags || []}
+              onTagAdded={handleTagAdded}
+              onTagRemoved={handleTagRemoved}
+            />
           </>
         )}
         <div className="flex-1 overflow-hidden border-r border-border">
@@ -842,6 +1012,13 @@ function WorkspacePage() {
             placeholder="Search notes..."
           />
         </div>
+
+        {/* Tag filter — visible above folder navigation when the user has tags (TASK-028) */}
+        <TagFilter
+          tags={tags}
+          selectedTagIds={selectedTagIds}
+          onToggle={handleTagFilterToggle}
+        />
 
         {/* Folder navigation */}
         <div className="flex-shrink-0 border-b border-border">

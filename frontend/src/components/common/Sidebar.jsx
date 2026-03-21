@@ -20,9 +20,14 @@
  *   - border: panel divider and item separators
  *   - 12px / text-xs: metadata font size
  *   - 14px / text-sm: note title font size
+ *
+ * TASK-028: NoteItem now renders TagChip components (read-only) below the
+ * title/date metadata when the note has tags. The tags prop on each note is
+ * optional; notes without it render with no chips (backwards-compatible).
  */
 
 import React from 'react';
+import TagChip from '../tags/TagChip.jsx';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -70,8 +75,11 @@ function EmptyState() {
 /**
  * Renders a single note entry in the catalog list.
  *
+ * When the note has tags, renders small tag chips below the title and date
+ * metadata using TagChip (read-only, no remove button).
+ *
  * @param {object} props
- * @param {{ id: string, title: string, updated_at: string }} props.note - Note summary
+ * @param {{ id: string, title: string, updated_at: string, tags?: Array<{id: string, name: string}> }} props.note - Note summary
  * @param {boolean} props.isActive - Whether this note is currently open in the editor
  * @param {function} props.onSelect - Callback invoked with the note id when clicked
  * @returns {JSX.Element}
@@ -80,6 +88,8 @@ function NoteItem({ note, isActive, onSelect }) {
   const activeClasses = isActive
     ? 'bg-bg-tertiary border-l-2 border-accent'
     : 'hover:bg-bg-tertiary border-l-2 border-transparent';
+
+  const tags = note.tags || [];
 
   return (
     <li>
@@ -96,6 +106,13 @@ function NoteItem({ note, isActive, onSelect }) {
         <p className="text-text-secondary text-xs mt-0.5">
           {formatDate(note.updated_at)}
         </p>
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {tags.map((tag) => (
+              <TagChip key={tag.id} tag={tag} />
+            ))}
+          </div>
+        )}
       </button>
     </li>
   );

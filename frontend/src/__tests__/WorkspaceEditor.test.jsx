@@ -50,8 +50,17 @@ vi.mock('../api/notes.js', () => ({
   deleteNote: vi.fn(),
 }));
 
+vi.mock('../api/tags.js', () => ({
+  getTags: vi.fn(),
+  createTag: vi.fn(),
+  deleteTag: vi.fn(),
+  addTagToNote: vi.fn(),
+  removeTagFromNote: vi.fn(),
+}));
+
 import { useAuth } from '../hooks/useAuth.js';
 import { getNotes, getNote } from '../api/notes.js';
+import { getTags } from '../api/tags.js';
 import WorkspacePage from '../pages/WorkspacePage.jsx';
 
 // ---------------------------------------------------------------------------
@@ -86,6 +95,7 @@ describe('WorkspacePage Editor + Preview integration (TASK-007)', () => {
     });
 
     getNotes.mockResolvedValue({ notes: [] });
+    getTags.mockResolvedValue({ tags: [] });
     getNote.mockResolvedValue({
       note: { id: 'note-1', title: 'My Note', body: '# Hello Markdown', folder_id: null, updated_at: '2026-03-20T10:00:00.000Z' },
     });

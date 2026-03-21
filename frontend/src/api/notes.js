@@ -13,10 +13,20 @@ import { get, post, put, del } from './client.js';
  * Body is excluded from each note in the response — the backend omits it
  * for list performance. Call getNote(id) to retrieve the full body.
  *
- * @returns {Promise<{ notes: Array<{ id: string, title: string, updated_at: string, folder_id: string|null }> }>}
+ * When tagIds is a non-empty array, the request includes a ?tags=id1,id2
+ * query parameter. The backend applies OR logic: notes matching ANY of the
+ * provided tag IDs are returned. Each note in the response includes a
+ * tags array: [{ id, name }].
+ *
+ * @param {string[]} [tagIds=[]] - Optional array of tag UUIDs to filter by
+ * @returns {Promise<{ notes: Array<{ id: string, title: string, updated_at: string, folder_id: string|null, tags: Array<{id: string, name: string}> }> }>}
  */
-export async function getNotes() {
-  return get('/api/notes');
+export async function getNotes(tagIds = []) {
+  const path =
+    tagIds.length > 0
+      ? `/api/notes?tags=${tagIds.join(',')}`
+      : '/api/notes';
+  return get(path);
 }
 
 /**

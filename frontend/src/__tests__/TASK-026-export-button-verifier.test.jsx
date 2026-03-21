@@ -48,9 +48,18 @@ vi.mock('@uiw/react-codemirror', () => ({
   )),
 }));
 
+vi.mock('../api/tags.js', () => ({
+  getTags: vi.fn(),
+  createTag: vi.fn(),
+  deleteTag: vi.fn(),
+  addTagToNote: vi.fn(),
+  removeTagFromNote: vi.fn(),
+}));
+
 import { useAuth } from '../hooks/useAuth.js';
 import { getNotes, getNote } from '../api/notes.js';
 import { exportNote } from '../utils/exportNote.js';
+import { getTags } from '../api/tags.js';
 import WorkspacePage from '../pages/WorkspacePage.jsx';
 
 // ---------------------------------------------------------------------------
@@ -77,6 +86,7 @@ beforeEach(() => {
     logout: vi.fn(),
   });
   getNotes.mockResolvedValue({ notes: [] });
+  getTags.mockResolvedValue({ tags: [] });
 });
 
 // ---------------------------------------------------------------------------

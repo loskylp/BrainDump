@@ -43,8 +43,17 @@ vi.mock('../api/notes.js', () => ({
   deleteNote: vi.fn(),
 }));
 
+vi.mock('../api/tags.js', () => ({
+  getTags: vi.fn(),
+  createTag: vi.fn(),
+  deleteTag: vi.fn(),
+  addTagToNote: vi.fn(),
+  removeTagFromNote: vi.fn(),
+}));
+
 import { useAuth } from '../hooks/useAuth.js';
 import { getNotes, getNote, updateNote } from '../api/notes.js';
+import { getTags } from '../api/tags.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -91,6 +100,7 @@ describe('WorkspacePage note editing (TASK-009)', () => {
     getNotes.mockResolvedValue({
       notes: [{ id: 'note-42', title: 'Original Title', updated_at: '2026-03-20T10:00:00.000Z', folder_id: null }],
     });
+    getTags.mockResolvedValue({ tags: [] });
 
     getNote.mockResolvedValue({
       note: makeNote(),

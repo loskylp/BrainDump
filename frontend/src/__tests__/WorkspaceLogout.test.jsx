@@ -27,8 +27,17 @@ vi.mock('../api/notes.js', () => ({
   deleteNote: vi.fn(),
 }));
 
+vi.mock('../api/tags.js', () => ({
+  getTags: vi.fn(),
+  createTag: vi.fn(),
+  deleteTag: vi.fn(),
+  addTagToNote: vi.fn(),
+  removeTagFromNote: vi.fn(),
+}));
+
 import { useAuth } from '../hooks/useAuth.js';
 import { getNotes } from '../api/notes.js';
+import { getTags } from '../api/tags.js';
 
 function renderWorkspacePage() {
   return render(
@@ -54,6 +63,7 @@ describe('WorkspacePage logout', () => {
       logout: mockLogout,
     });
     getNotes.mockResolvedValue({ notes: [] });
+    getTags.mockResolvedValue({ tags: [] });
   });
 
   it('renders a logout button', () => {
