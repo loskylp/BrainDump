@@ -17,25 +17,71 @@
  * many tabs fire the check (ADR-004).
  */
 
-// TODO: TASK-013
 import { useEffect, useRef, useCallback } from 'react';
 import { checkVersion } from '../api/versions.js';
 
 /**
  * @param {object} params
  * @param {string | null} params.noteId - UUID of the note, or null if no note is open
- * @param {string} params.contentKey - A value that changes on every keystroke (e.g., the content string itself or a counter). The hook resets the timer whenever this value changes.
+ * @param {string} params.contentKey - A value that changes on every keystroke
  * @param {number} [params.idleMs=30000] - Idle duration in milliseconds (ADR-004: 30000ms)
- * @param {function} [params.onVersionCreated] - Optional callback invoked when the server creates a new version. Receives { versionNumber: number }.
+ * @param {function} [params.onVersionCreated] - Optional callback when server creates a new version
  * @returns {void}
- *
- * @precondition noteId is a valid UUID when non-null
- * @postcondition On timer fire: POST /api/notes/:noteId/check-version is called
- * @postcondition This hook does NOT call PUT /api/notes/:noteId (ADR-004 separation)
- * @postcondition Timer is cleared when the component unmounts or noteId changes
  */
 export function useVersionTimer({ noteId, contentKey, idleMs = 30000, onVersionCreated }) {
-  // TODO: TASK-013 -- implement idle timer, reset on contentKey change,
-  // call checkVersion, invoke onVersionCreated callback if version was created
-  throw new Error('Not implemented');
+  const timerRef = useRef(null);
+  const noteIdRef = useRef(noteId);
+  const isInitialLoadRef = useRef(true);
+
+  noteIdRef.current = noteId;
+
+  // Reset initial load flag when noteId changes
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+  }, [noteId]);
+
+  const triggerCheck = useCallback(async () => {
+    const currentNoteId = noteIdRef.current;
+    if (!currentNoteId) return;
+
+    try {
+      const result = await checkVersion(currentNoteId);
+      if (result.versionCreated && onVersionCreated) {
+        onVersionCreated({ versionNumber: result.versionNumber });
+      }
+    } catch {
+      // Version check failure is non-critical; next idle period will retry
+    }
+  }, [onVersionCreated]);
+
+  useEffect(() => {
+    if (!noteId) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      return;
+    }
+
+    // Skip the initial content load
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+
+    // Reset the idle timer on every content change
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    timerRef.current = setTimeout(() => {
+      triggerCheck();
+    }, idleMs);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [noteId, contentKey, idleMs, triggerCheck]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 }

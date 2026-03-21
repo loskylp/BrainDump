@@ -18,10 +18,9 @@
  * concurrent check requests (ADR-004 consequence note).
  */
 
-// TODO: TASK-013
 'use strict';
 
-const { Note, NoteVersion } = require('../models');
+const { Note, NoteVersion, sequelize } = require('../models');
 
 /**
  * Checks whether the current note content differs from the latest version,
@@ -30,26 +29,58 @@ const { Note, NoteVersion } = require('../models');
  * @param {string} noteId - UUID of the note to check
  * @param {string} userId - UUID of the authenticated user (for ownership verification)
  * @returns {Promise<{ created: boolean, version: NoteVersion | null }>}
- *   - created: true if a new version row was inserted, false if content was unchanged
- *   - version: the newly created NoteVersion instance if created=true, otherwise null
  * @throws {Error} With message 'NOT_FOUND' if note does not exist or belongs to a different user
- *
- * @precondition noteId references a note that has at least one existing version
- *               (initial version is always created at note creation by noteService)
- * @precondition The notes row already contains the latest auto-saved content
- * @postcondition If created=true: new NoteVersion row persisted with version_number = MAX(prev) + 1
- * @postcondition If created=false: no writes performed
- * @postcondition Concurrent calls for the same noteId are serialized via SELECT FOR UPDATE
  */
 async function checkAndCreateVersion(noteId, userId) {
-  // TODO: TASK-013 -- implement:
-  // 1. Load current note (verify ownership)
-  // 2. Load latest NoteVersion for this noteId (ORDER BY version_number DESC LIMIT 1)
-  // 3. Compare note.body with latestVersion.body (and note.title with latestVersion.title)
-  // 4. If different: open transaction, SELECT FOR UPDATE on note, INSERT NoteVersion with
-  //    version_number = latestVersion.version_number + 1
-  // 5. Return { created, version }
-  throw new Error('Not implemented');
+  return sequelize.transaction(async (transaction) => {
+    await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+      replacements: { userId },
+      transaction,
+    });
+
+    // Lock the note row to prevent concurrent version creation races
+    const note = await Note.scope({ method: ['forUser', userId] }).findOne({
+      where: { id: noteId },
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+
+    if (!note) {
+      throw new Error('NOT_FOUND');
+    }
+
+    // Load the latest version for comparison
+    const latestVersion = await NoteVersion.findOne({
+      where: { note_id: noteId },
+      order: [['version_number', 'DESC']],
+      transaction,
+    });
+
+    // Compare content: if no version exists or content differs, create new version
+    if (
+      latestVersion &&
+      latestVersion.title === note.title &&
+      latestVersion.body === note.body
+    ) {
+      return { created: false, version: null };
+    }
+
+    const nextVersionNumber = latestVersion
+      ? latestVersion.version_number + 1
+      : 1;
+
+    const version = await NoteVersion.create(
+      {
+        note_id: noteId,
+        title: note.title,
+        body: note.body,
+        version_number: nextVersionNumber,
+      },
+      { transaction }
+    );
+
+    return { created: true, version };
+  });
 }
 
 /**
@@ -58,44 +89,129 @@ async function checkAndCreateVersion(noteId, userId) {
  * @param {string} noteId - UUID of the note
  * @param {string} userId - UUID of the authenticated user
  * @returns {Promise<NoteVersion[]>} Array of NoteVersion instances
- *   Each entry includes: id, version_number, created_at (title and body excluded for list performance)
  * @throws {Error} With message 'NOT_FOUND' if note does not exist or belongs to a different user
- *
- * @postcondition Returns versions ordered by version_number DESC (newest first)
- * @postcondition Returns all versions with no limit (REQ-016: "100 versions shows all 100")
  */
 async function getVersions(noteId, userId) {
-  // TODO: TASK-013 -- implement
-  throw new Error('Not implemented');
+  // Verify note ownership
+  const note = await Note.scope({ method: ['forUser', userId] }).findOne({
+    where: { id: noteId },
+  });
+
+  if (!note) {
+    throw new Error('NOT_FOUND');
+  }
+
+  return NoteVersion.findAll({
+    where: { note_id: noteId },
+    attributes: ['id', 'version_number', 'title', 'body', 'created_at'],
+    order: [['version_number', 'DESC']],
+  });
+}
+
+/**
+ * Returns a single version by ID.
+ *
+ * @param {string} noteId - UUID of the parent note
+ * @param {string} versionId - UUID of the NoteVersion
+ * @param {string} userId - UUID of the authenticated user
+ * @returns {Promise<NoteVersion>}
+ * @throws {Error} With message 'NOT_FOUND' if note or version does not exist
+ * @throws {Error} With message 'VERSION_MISMATCH' if versionId does not belong to noteId
+ */
+async function getVersion(noteId, versionId, userId) {
+  // Verify note ownership
+  const note = await Note.scope({ method: ['forUser', userId] }).findOne({
+    where: { id: noteId },
+  });
+
+  if (!note) {
+    throw new Error('NOT_FOUND');
+  }
+
+  const version = await NoteVersion.findOne({
+    where: { id: versionId },
+  });
+
+  if (!version) {
+    throw new Error('NOT_FOUND');
+  }
+
+  if (version.note_id !== noteId) {
+    throw new Error('VERSION_MISMATCH');
+  }
+
+  return version;
 }
 
 /**
  * Restores a note's content to the state captured in a specific version.
  *
- * Restoration is a two-step server operation (ADR-004 edge case):
- *   1. Update the notes row with the restored version's title and body
- *   2. Create a new NoteVersion entry capturing the state BEFORE restoration
- *      (so the user can undo the restore if needed)
- *
- * Both steps occur within a single database transaction.
- *
  * @param {string} noteId - UUID of the note to restore
  * @param {string} versionId - UUID of the NoteVersion to restore from
  * @param {string} userId - UUID of the authenticated user
  * @returns {Promise<{ note: Note, newVersion: NoteVersion }>}
- *   - note: the updated Note instance with restored content
- *   - newVersion: the newly created NoteVersion that captured the pre-restore state
- * @throws {Error} With message 'NOT_FOUND' if note or version does not exist, or belongs to a different user
+ * @throws {Error} With message 'NOT_FOUND' if note or version does not exist
  * @throws {Error} With message 'VERSION_MISMATCH' if versionId does not belong to noteId
- *
- * @precondition versionId references a version that belongs to noteId
- * @postcondition notes row has title and body from the restored version
- * @postcondition New NoteVersion row captures the content that existed before this restore
- * @postcondition Both writes occur atomically (transaction)
  */
 async function restoreVersion(noteId, versionId, userId) {
-  // TODO: TASK-013 -- implement
-  throw new Error('Not implemented');
+  return sequelize.transaction(async (transaction) => {
+    await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+      replacements: { userId },
+      transaction,
+    });
+
+    const note = await Note.scope({ method: ['forUser', userId] }).findOne({
+      where: { id: noteId },
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+
+    if (!note) {
+      throw new Error('NOT_FOUND');
+    }
+
+    const targetVersion = await NoteVersion.findOne({
+      where: { id: versionId },
+      transaction,
+    });
+
+    if (!targetVersion) {
+      throw new Error('NOT_FOUND');
+    }
+
+    if (targetVersion.note_id !== noteId) {
+      throw new Error('VERSION_MISMATCH');
+    }
+
+    // Get the current max version number
+    const latestVersion = await NoteVersion.findOne({
+      where: { note_id: noteId },
+      order: [['version_number', 'DESC']],
+      transaction,
+    });
+
+    const nextVersionNumber = latestVersion
+      ? latestVersion.version_number + 1
+      : 1;
+
+    // Create a new version capturing the state BEFORE restoration
+    const newVersion = await NoteVersion.create(
+      {
+        note_id: noteId,
+        title: note.title,
+        body: note.body,
+        version_number: nextVersionNumber,
+      },
+      { transaction }
+    );
+
+    // Update the note with the restored version's content
+    note.title = targetVersion.title;
+    note.body = targetVersion.body;
+    await note.save({ transaction });
+
+    return { note, newVersion };
+  });
 }
 
-module.exports = { checkAndCreateVersion, getVersions, restoreVersion };
+module.exports = { checkAndCreateVersion, getVersions, getVersion, restoreVersion };

@@ -12,7 +12,6 @@
  *   :versionId  -- UUID of a specific NoteVersion row
  */
 
-// TODO: TASK-013
 'use strict';
 
 const express = require('express');
@@ -33,21 +32,25 @@ router.use(rlsContext);
  * Server loads the current note and its latest version, diffs the content,
  * and conditionally inserts a new version row.
  *
- * No request body required (the server reads the current state from the DB).
- *
  * @returns {200} { versionCreated: boolean, versionNumber: number | null }
- *   - versionCreated: true if a new NoteVersion row was inserted
- *   - versionNumber: the new version number if created, otherwise null
- * @returns {404} { error: "Not found" } -- note does not exist or belongs to another user
- *
- * Postconditions:
- *   - If content differs from latest version: new NoteVersion row persisted
- *   - If content unchanged: no write performed
- *   - Concurrent check requests are serialized (SELECT FOR UPDATE in versionService)
+ * @returns {404} { error: "Not found" }
  */
 router.post('/check-version', ownershipGuard('Note', 'id'), async (req, res, next) => {
-  // TODO: TASK-013 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const { created, version } = await versionService.checkAndCreateVersion(
+      req.params.id,
+      req.session.userId
+    );
+    res.json({
+      versionCreated: created,
+      versionNumber: version ? version.version_number : null,
+    });
+  } catch (err) {
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    next(err);
+  }
 });
 
 /**
@@ -55,39 +58,86 @@ router.post('/check-version', ownershipGuard('Note', 'id'), async (req, res, nex
  *
  * Returns all versions of a note ordered by version_number DESC (newest first).
  *
- * @returns {200} { versions: Array<{ id, version_number, created_at }> }
- *   NOTE: title and body are excluded from list responses for performance;
- *   use GET /api/notes/:id/versions/:versionId to retrieve full content.
- * @returns {404} { error: "Not found" } -- note does not exist or belongs to another user
- *
- * Postconditions:
- *   - Returns all versions with no pagination (REQ-016: 100 versions returns all 100)
+ * @returns {200} { versions: Array<{ id, version_number, title, body, created_at }> }
+ * @returns {404} { error: "Not found" }
  */
 router.get('/versions', ownershipGuard('Note', 'id'), async (req, res, next) => {
-  // TODO: TASK-013 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const versions = await versionService.getVersions(
+      req.params.id,
+      req.session.userId
+    );
+    res.json({ versions });
+  } catch (err) {
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    next(err);
+  }
+});
+
+/**
+ * GET /api/notes/:id/versions/:versionId
+ *
+ * Returns the content of a specific version.
+ *
+ * @returns {200} { version: { id, version_number, title, body, created_at } }
+ * @returns {404} { error: "Not found" }
+ * @returns {400} { error: "VERSION_MISMATCH" }
+ */
+router.get('/versions/:versionId', ownershipGuard('Note', 'id'), async (req, res, next) => {
+  try {
+    const version = await versionService.getVersion(
+      req.params.id,
+      req.params.versionId,
+      req.session.userId
+    );
+    res.json({ version });
+  } catch (err) {
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    if (err.message === 'VERSION_MISMATCH') {
+      return res.status(400).json({ error: 'VERSION_MISMATCH' });
+    }
+    next(err);
+  }
 });
 
 /**
  * POST /api/notes/:id/versions/restore/:versionId
  *
  * Restores the note's content to the state of the specified version.
- * Creates a new version entry capturing the current state before restoration
- * (so the user can undo the restore).
- *
- * Both the note update and the new version creation occur in a single transaction.
  *
  * @returns {200} { note: { id, title, body, updated_at }, newVersionNumber: number }
- * @returns {404} { error: "Not found" } -- note or version not found, or belongs to another user
- * @returns {400} { error: "VERSION_MISMATCH" } -- versionId does not belong to noteId
- *
- * Postconditions:
- *   - notes row updated with title and body from the restored version
- *   - New NoteVersion row persisted with content that existed before this restore
+ * @returns {404} { error: "Not found" }
+ * @returns {400} { error: "VERSION_MISMATCH" }
  */
 router.post('/restore/:versionId', ownershipGuard('Note', 'id'), async (req, res, next) => {
-  // TODO: TASK-013 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const { note, newVersion } = await versionService.restoreVersion(
+      req.params.id,
+      req.params.versionId,
+      req.session.userId
+    );
+    res.json({
+      note: {
+        id: note.id,
+        title: note.title,
+        body: note.body,
+        updated_at: note.updated_at,
+      },
+      newVersionNumber: newVersion.version_number,
+    });
+  } catch (err) {
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    if (err.message === 'VERSION_MISMATCH') {
+      return res.status(400).json({ error: 'VERSION_MISMATCH' });
+    }
+    next(err);
+  }
 });
 
 module.exports = router;

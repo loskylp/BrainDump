@@ -41,6 +41,8 @@ import Editor from '../components/editor/Editor.jsx';
 import Preview from '../components/editor/Preview.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { useAutoSave } from '../hooks/useAutoSave.js';
+import { useVersionTimer } from '../hooks/useVersionTimer.js';
+import VersionHistory from '../components/editor/VersionHistory.jsx';
 import { getNotes, createNote, getNote, updateNote, deleteNote } from '../api/notes.js';
 
 /**
@@ -105,6 +107,18 @@ function WorkspacePage() {
   const { status: saveStatus } = useAutoSave({
     noteId: activeNoteId,
     content: autoSaveContent,
+  });
+
+  // ---------------------------------------------------------------------------
+  // Version timer hook (TASK-013)
+  // ---------------------------------------------------------------------------
+
+  /** Whether the version history panel is open. */
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+
+  useVersionTimer({
+    noteId: activeNoteId,
+    contentKey: editorBody,
   });
 
   // ---------------------------------------------------------------------------
@@ -333,6 +347,25 @@ function WorkspacePage() {
     }
   }, [activeNoteId, editorTitle]);
 
+  /**
+   * Toggles the version history panel visibility (TASK-013 AC-10).
+   */
+  const handleToggleVersionHistory = useCallback(() => {
+    setShowVersionHistory((prev) => !prev);
+  }, []);
+
+  /**
+   * Handles restoration from the VersionHistory panel (TASK-013 AC-8).
+   * Updates the editor content with the restored version's title and body.
+   *
+   * @param {{ title: string, body: string }} restoredContent
+   */
+  const handleVersionRestore = useCallback((restoredContent) => {
+    setEditorTitle(restoredContent.title);
+    setEditorBody(restoredContent.body);
+    setShowVersionHistory(false);
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -382,6 +415,13 @@ function WorkspacePage() {
                 Save
               </button>
               <button
+                data-testid="version-history-button"
+                onClick={handleToggleVersionHistory}
+                className="px-3 py-1 text-xs font-mono text-text-primary bg-bg-secondary border border-border hover:bg-border transition-colors"
+              >
+                History
+              </button>
+              <button
                 data-testid="delete-note-button"
                 onClick={handleDeleteNote}
                 className="px-3 py-1 text-xs font-mono text-red-400 bg-bg-secondary border border-border hover:bg-red-900 hover:text-red-200 transition-colors"
@@ -415,7 +455,15 @@ function WorkspacePage() {
       }
       editor={renderEditorPanel()}
       preview={
-        <Preview value={editorBody} />
+        showVersionHistory && activeNoteId ? (
+          <VersionHistory
+            noteId={activeNoteId}
+            onClose={handleToggleVersionHistory}
+            onRestore={handleVersionRestore}
+          />
+        ) : (
+          <Preview value={editorBody} />
+        )
       }
     />
   );
