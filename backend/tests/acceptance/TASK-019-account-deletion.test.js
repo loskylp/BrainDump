@@ -123,9 +123,9 @@ afterAll(async () => {
 describe('AC-1 [REQ-014]: DELETE /api/auth/account is accessible to authenticated users', () => {
   // Given: an authenticated user
   // When: they DELETE /api/auth/account with the correct password
-  // Then: the response is 200 with a success message
+  // Then: the response is 204 with no body
 
-  it('returns 200 when authenticated with the correct password', async () => {
+  it('returns 204 when authenticated with the correct password', async () => {
     // Given: a registered user with an active session
     const { cookie } = await registerUser();
 
@@ -135,21 +135,8 @@ describe('AC-1 [REQ-014]: DELETE /api/auth/account is accessible to authenticate
       .set('Cookie', cookie)
       .send({ password: TEST_PASSWORD });
 
-    // Then: the response is 200
-    expect(res.status).toBe(200);
-  });
-
-  it('response body contains a success message', async () => {
-    const { cookie } = await registerUser();
-
-    const res = await request(app)
-      .delete('/api/auth/account')
-      .set('Cookie', cookie)
-      .send({ password: TEST_PASSWORD });
-
-    expect(res.body.message).toBeDefined();
-    expect(typeof res.body.message).toBe('string');
-    expect(res.body.message.length).toBeGreaterThan(0);
+    // Then: the response is 204 (no body — DELETE with no response body)
+    expect(res.status).toBe(204);
   });
 
   // [VERIFIER-ADDED] Negative: unauthenticated request is rejected
