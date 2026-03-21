@@ -89,7 +89,7 @@ app.use('/api/search', searchRouter);
 // --- Static file serving (production) ---
 
 if (process.env.NODE_ENV === 'production') {
-  const frontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
+  const frontendDist = path.join(__dirname, '..', 'public');
   app.use(express.static(frontendDist));
 
   // SPA fallback: serve index.html for any non-API route
