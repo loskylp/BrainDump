@@ -118,15 +118,15 @@ function WorkspaceLayout({
       <div
         data-testid="sidebar-overlay"
         className={[
-          // Sub-desktop: fixed overlay sliding in from the left
-          'fixed top-0 left-0 h-full w-[260px] z-40',
-          'bg-bg-secondary border-r border-border overflow-y-auto',
-          'transition-transform duration-200',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          'bg-bg-secondary border-r border-border overflow-y-auto h-full',
+          // Tablet (md–lg): fixed overlay sliding in from the left
+          'md:fixed md:top-0 md:left-0 md:h-full md:w-[260px] md:z-40',
+          'md:transition-transform md:duration-200',
+          sidebarOpen ? 'md:translate-x-0' : 'md:-translate-x-full',
           // Desktop: cancel fixed, return to grid flow
-          'lg:relative lg:translate-x-0 lg:z-auto lg:h-auto lg:w-auto lg:block',
-          // Mobile visibility: show only when activePanel is sidebar
-          activePanel === 'sidebar' ? '' : 'hidden lg:block',
+          'lg:relative lg:translate-x-0 lg:z-auto lg:h-auto lg:w-auto',
+          // Mobile: hidden when not active panel; md+ always block (transform controls tablet visibility)
+          activePanel === 'sidebar' ? '' : 'hidden md:block',
         ]
           .filter(Boolean)
           .join(' ')}
