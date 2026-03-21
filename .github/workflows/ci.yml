@@ -13,7 +13,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ghcr.io/ORG/braindump
+  IMAGE_NAME: ghcr.io/loskylp/braindump
 
 jobs:
   # ─────────────────────────────────────────────
