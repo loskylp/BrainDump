@@ -66,6 +66,7 @@ import { useVersionTimer } from '../hooks/useVersionTimer.js';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
 import VersionHistory from '../components/editor/VersionHistory.jsx';
 import { getNotes, createNote, getNote, updateNote, deleteNote } from '../api/notes.js';
+import { exportNote } from '../utils/exportNote.js';
 import { getFolders } from '../api/folders.js';
 import SearchBar from '../components/Search/SearchBar.jsx';
 
@@ -458,6 +459,19 @@ function WorkspacePage() {
   }, [activeNoteId, editorTitle]);
 
   /**
+   * Triggers a client-side .md file download for the currently active note
+   * (TASK-026, REQ-019). Delegates to the exportNote utility which handles
+   * Blob creation and the hidden-anchor download mechanism.
+   *
+   * Reads editorTitle and editorBody directly from the enclosing closure so
+   * the exported content always reflects the latest unsaved edits, not just
+   * the last persisted state.
+   */
+  const handleExport = useCallback(() => {
+    exportNote(editorTitle, editorBody);
+  }, [editorTitle, editorBody]);
+
+  /**
    * Toggles the version history panel visibility (TASK-013 AC-10).
    */
   const handleToggleVersionHistory = useCallback(() => {
@@ -779,6 +793,13 @@ function WorkspacePage() {
                 className="px-3 py-1 text-xs font-mono text-red-400 bg-bg-secondary border border-border hover:bg-red-900 hover:text-red-200 transition-colors"
               >
                 Delete
+              </button>
+              <button
+                data-testid="export-button"
+                onClick={handleExport}
+                className="px-3 py-1 text-xs font-mono text-text-primary bg-bg-secondary border border-border hover:bg-border transition-colors"
+              >
+                Export
               </button>
             </div>
           </>
