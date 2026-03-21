@@ -10,7 +10,7 @@
 
 'use strict';
 
-const { Note, NoteVersion, Folder, sequelize } = require('../models');
+const { Note, NoteVersion, Folder, User, sequelize } = require('../models');
 
 /**
  * Creates a new note with an initial version.
@@ -230,4 +230,52 @@ async function deleteNote(noteId, userId) {
   });
 }
 
-module.exports = { createNote, getNotes, getNote, updateNote, deleteNote };
+/**
+ * Returns a minimal user record for the given userId, used to resolve the username
+ * for the bulk export ZIP filename.
+ *
+ * Fetches only the username attribute to avoid loading sensitive fields. Returns
+ * null when no user is found (which should not occur in authenticated routes).
+ *
+ * @param {string} userId - UUID of the authenticated user
+ * @returns {Promise<{ username: string } | null>} User object with username, or null
+ *
+ * @precondition userId references a valid user row in the database
+ * @postcondition Returns null rather than throwing when the user is not found
+ */
+async function getUserById(userId) {
+  return User.findByPk(userId, { attributes: ['username'] });
+}
+
+/**
+ * Returns all notes belonging to the given user with their associated folder data.
+ *
+ * Fetches the complete note bodies and includes the related Folder instance (or
+ * null for root-level notes). Used by the bulk ZIP export endpoint (TASK-029,
+ * ADR-011) to build the archive's directory structure and file contents in a
+ * single database query.
+ *
+ * The sort order follows the ADR-011 query specification: folder name NULLS
+ * FIRST (root notes first), then note title ASC within each group.
+ *
+ * @param {string} userId - UUID of the authenticated user
+ * @returns {Promise<Note[]>} Array of Note instances, each with:
+ *   - id, title, body, folder_id
+ *   - folder: Folder instance { id, name } or null for root notes
+ *
+ * @precondition userId references a valid user
+ * @postcondition Returns only notes where user_id = userId
+ * @postcondition Empty array returned when the user has no notes
+ * @postcondition Each returned note includes the associated Folder or null
+ */
+async function getAllNotesWithFolders(userId) {
+  return Note.scope({ method: ['forUser', userId] }).findAll({
+    include: [{ model: Folder, as: 'folder', attributes: ['id', 'name'], required: false }],
+    order: [
+      [{ model: Folder, as: 'folder' }, 'name', 'ASC NULLS FIRST'],
+      ['title', 'ASC'],
+    ],
+  });
+}
+
+module.exports = { createNote, getNotes, getNote, updateNote, deleteNote, getAllNotesWithFolders, getUserById };

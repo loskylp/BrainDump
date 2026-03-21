@@ -8,11 +8,13 @@
  *
  * Auto-save path: PUT /api/notes/:id (TASK-009)
  * Version check path: POST /api/notes/:id/check-version (in versions.js)
+ * Bulk export path: GET /api/notes/export (TASK-029)
  */
 
 'use strict';
 
 const express = require('express');
+const archiver = require('archiver');
 const router = express.Router();
 const authenticate = require('../middleware/authenticate');
 const ownershipGuard = require('../middleware/ownershipGuard');
@@ -76,6 +78,140 @@ router.post('/', async (req, res, next) => {
     next(err);
   }
 });
+
+/**
+ * GET /api/notes/export
+ *
+ * Streams a ZIP archive of all notes owned by the authenticated user.
+ *
+ * Each note is written as a `.md` file whose content is the raw Markdown body.
+ * Notes assigned to a folder are placed in a subdirectory named after the folder
+ * (sanitized for filesystem safety). Root-level notes are placed at the ZIP root.
+ *
+ * Filename sanitization rules (applied to both note titles and folder names):
+ *   - Replace characters invalid in filenames (/ \ : * ? " < > |) with hyphen
+ *   - Replace runs of whitespace with a single hyphen
+ *   - Collapse consecutive hyphens to a single hyphen
+ *   - Trim leading and trailing hyphens
+ *   - Lowercase the result
+ *   - Fall back to "untitled" (notes) or "unnamed-folder" (folders) if the
+ *     sanitized result is empty
+ *   - Truncate to 100 characters (before .md extension)
+ *
+ * Filename collision resolution: when two notes in the same directory produce
+ * the same sanitized filename, the second is appended with `-2`, the third
+ * with `-3`, and so on.
+ *
+ * Response headers:
+ *   Content-Type: application/zip
+ *   Content-Disposition: attachment; filename="braindump-export-{username}-{YYYY-MM-DD}.zip"
+ *
+ * @returns {200} ZIP byte stream
+ * @returns {401} { error: "Authentication required" } — unauthenticated
+ *
+ * Route must be declared before /:id to prevent Express matching "export" as a
+ * note ID parameter (ADR-011, TASK-029 implementation note).
+ *
+ * Preconditions:
+ *   - req.session.userId references a valid, authenticated user
+ * Postconditions:
+ *   - ZIP contains only notes owned by the authenticated user (per-user isolation)
+ *   - Each .md file content is the note's raw Markdown body (no HTML conversion)
+ *   - An empty collection produces a valid ZIP with zero file entries
+ */
+router.get('/export', async (req, res, next) => {
+  try {
+    const userId = req.session.userId;
+
+    const [user, notes] = await Promise.all([
+      noteService.getUserById(userId),
+      noteService.getAllNotesWithFolders(userId),
+    ]);
+
+    const username = user ? user.username : 'user';
+    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const zipFilename = `braindump-export-${username}-${date}.zip`;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
+
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.pipe(res);
+
+    // Track used filenames per directory to detect and resolve collisions.
+    // Key: directory path (empty string for root), Value: Set of basename strings.
+    const usedNames = new Map();
+
+    for (const note of notes) {
+      const dir = note.folder ? sanitizePathSegment(note.folder.name, 'unnamed-folder') : '';
+      const basename = sanitizePathSegment(note.title, 'untitled');
+
+      if (!usedNames.has(dir)) {
+        usedNames.set(dir, new Set());
+      }
+      const dirNames = usedNames.get(dir);
+
+      const resolvedBasename = resolveCollision(basename, dirNames);
+      dirNames.add(resolvedBasename);
+
+      const entryPath = dir ? `${dir}/${resolvedBasename}.md` : `${resolvedBasename}.md`;
+      archive.append(note.body || '', { name: entryPath });
+    }
+
+    await archive.finalize();
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Sanitizes a string for use as a filesystem path segment (file or directory name).
+ *
+ * Applies the following transformations in order:
+ *   1. Replace characters invalid in most filesystems (/ \ : * ? " < > |) with hyphen
+ *   2. Replace runs of whitespace with a single hyphen
+ *   3. Collapse consecutive hyphens to a single hyphen
+ *   4. Trim leading and trailing hyphens
+ *   5. Lowercase the result
+ *   6. Truncate to 100 characters
+ *   7. Return the fallback string if the result is empty
+ *
+ * @param {string} input - The raw string to sanitize
+ * @param {string} fallback - Returned when the sanitized result is empty
+ * @returns {string} A filesystem-safe, lowercase path segment
+ */
+function sanitizePathSegment(input, fallback) {
+  let s = (input || '').trim();
+  s = s.replace(/[/\\:*?"<>|]/g, '-');
+  s = s.replace(/\s+/g, '-');
+  s = s.replace(/-{2,}/g, '-');
+  s = s.replace(/^-+|-+$/g, '');
+  s = s.toLowerCase();
+  s = s.slice(0, 100);
+  return s || fallback;
+}
+
+/**
+ * Resolves a filename collision within a directory by appending a numeric suffix.
+ *
+ * Given a desired basename and the set of basenames already used in the same
+ * directory, returns the basename unchanged if it is not yet taken. If it is
+ * taken, appends `-2`, then `-3`, and so on until an unused name is found.
+ *
+ * @param {string} basename - Desired filename base (without .md extension)
+ * @param {Set<string>} usedInDir - Set of basenames already assigned in this directory
+ * @returns {string} A basename not present in usedInDir
+ */
+function resolveCollision(basename, usedInDir) {
+  if (!usedInDir.has(basename)) {
+    return basename;
+  }
+  let counter = 2;
+  while (usedInDir.has(`${basename}-${counter}`)) {
+    counter += 1;
+  }
+  return `${basename}-${counter}`;
+}
 
 /**
  * GET /api/notes/:id
