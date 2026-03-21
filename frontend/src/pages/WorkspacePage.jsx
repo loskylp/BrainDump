@@ -23,6 +23,8 @@
  *   - folders: array of user-owned folders fetched from GET /api/folders (TASK-017)
  *   - activeFolderId: UUID of the currently selected folder filter, or null for All Notes
  *   - showFolderCreateForm: boolean toggling the inline folder creation form
+ *   - sidebarOpen: boolean controlling sidebar overlay visibility on sub-desktop (TASK-018)
+ *   - activePanel: 'sidebar'|'editor'|'preview' — which panel is visible on mobile (TASK-018)
  *
  * Data flow:
  *   Mount -> getNotes() + getFolders() -> populate notes and folders state
@@ -48,6 +50,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.jsx';
+import HamburgerToggle from '../components/common/HamburgerToggle.jsx';
 import Sidebar from '../components/common/Sidebar.jsx';
 import Editor from '../components/editor/Editor.jsx';
 import Preview from '../components/editor/Preview.jsx';
@@ -73,6 +76,8 @@ import SearchBar from '../components/Search/SearchBar.jsx';
  * @postcondition Creating a note prepends it to the sidebar list and sets it as active
  * @postcondition Save button and Cmd/Ctrl+S send title and body to PUT /api/notes/:id (TASK-009)
  * @postcondition FolderTree allows filtering notes by folder; folder dropdown in toolbar assigns notes
+ * @postcondition HamburgerToggle (lg:hidden) allows opening the sidebar overlay on sub-desktop
+ * @postcondition WorkspaceLayout receives sidebarOpen, onSidebarClose, activePanel, onPanelChange
  */
 function WorkspacePage() {
   const { user, logout } = useAuth();
@@ -136,6 +141,24 @@ function WorkspacePage() {
    * @type {[boolean, Function]}
    */
   const [showFolderCreateForm, setShowFolderCreateForm] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Responsive state (TASK-018)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Controls the sidebar overlay visibility on sub-desktop viewports.
+   * Default false so sidebar is collapsed on tablet and mobile on first render.
+   * @type {[boolean, Function]}
+   */
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  /**
+   * Which panel is visible on mobile (single-panel view).
+   * 'sidebar' | 'editor' | 'preview'. Defaults to 'editor'.
+   * @type {[string, Function]}
+   */
+  const [activePanel, setActivePanel] = useState('editor');
 
   // ---------------------------------------------------------------------------
   // Auto-save hook (TASK-012)
@@ -320,10 +343,17 @@ function WorkspacePage() {
    * The activeNoteId change triggers the note-content useEffect which calls
    * getNote(noteId) and stores the result in activeNote state.
    *
+   * On mobile (single-panel view): closes the sidebar overlay and switches
+   * the active panel to 'editor' so the note content is immediately visible
+   * (TASK-018 AC-2).
+   *
    * @param {string} noteId - UUID of the note to open
    */
   const handleSelectNote = useCallback((noteId) => {
     setActiveNoteId(noteId);
+    // On mobile: close sidebar overlay and show editor panel
+    setSidebarOpen(false);
+    setActivePanel('editor');
   }, []);
 
   /**
@@ -453,6 +483,58 @@ function WorkspacePage() {
   const handleSearchClear = useCallback(() => {
     setSearchResults(null);
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // Responsive handlers (TASK-018)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Toggles the sidebar overlay open or closed on sub-desktop viewports.
+   */
+  const handleSidebarToggle = useCallback(() => {
+    setSidebarOpen((prev) => !prev);
+  }, []);
+
+  /**
+   * Closes the sidebar overlay on sub-desktop viewports.
+   * Called when the backdrop is clicked or Escape is pressed.
+   */
+  const handleSidebarClose = useCallback(() => {
+    setSidebarOpen(false);
+  }, []);
+
+  /**
+   * Switches the visible panel on mobile (single-panel view).
+   *
+   * @param {'sidebar'|'editor'|'preview'} panel
+   */
+  const handlePanelChange = useCallback((panel) => {
+    setActivePanel(panel);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Keyboard shortcut: Escape closes the sidebar overlay (TASK-018)
+  // Placed after responsive handlers so handleSidebarClose is defined.
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    /**
+     * Closes the sidebar overlay when the Escape key is pressed on tablet.
+     * No-op on desktop where the sidebar is in normal grid flow.
+     *
+     * @param {KeyboardEvent} e
+     */
+    function handleEscape(e) {
+      if (e.key === 'Escape' && sidebarOpen) {
+        handleSidebarClose();
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [sidebarOpen, handleSidebarClose]);
 
   /**
    * Handles restoration from the VersionHistory panel (TASK-013 AC-8).
@@ -755,21 +837,34 @@ function WorkspacePage() {
   }
 
   return (
-    <WorkspaceLayout
-      sidebar={renderSidebar()}
-      editor={renderEditorPanel()}
-      preview={
-        showVersionHistory && activeNoteId ? (
-          <VersionHistory
-            noteId={activeNoteId}
-            onClose={handleToggleVersionHistory}
-            onRestore={handleVersionRestore}
-          />
-        ) : (
-          <Preview value={editorBody} />
-        )
-      }
-    />
+    <div className="relative">
+      {/* Hamburger toggle — visible only on sub-desktop (lg:hidden applied inside component) */}
+      <div className="absolute top-2 left-2 z-50">
+        <HamburgerToggle
+          isOpen={sidebarOpen}
+          onToggle={handleSidebarToggle}
+        />
+      </div>
+      <WorkspaceLayout
+        sidebar={renderSidebar()}
+        editor={renderEditorPanel()}
+        preview={
+          showVersionHistory && activeNoteId ? (
+            <VersionHistory
+              noteId={activeNoteId}
+              onClose={handleToggleVersionHistory}
+              onRestore={handleVersionRestore}
+            />
+          ) : (
+            <Preview value={editorBody} />
+          )
+        }
+        sidebarOpen={sidebarOpen}
+        onSidebarClose={handleSidebarClose}
+        activePanel={activePanel}
+        onPanelChange={handlePanelChange}
+      />
+    </div>
   );
 }
 

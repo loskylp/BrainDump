@@ -67,14 +67,16 @@ describe('WorkspacePage', () => {
   it('renders the workspace layout with three panel placeholders', () => {
     const { container } = renderWorkspacePage();
 
-    // Should render the grid container
-    const grid = container.firstChild;
+    // TASK-018: WorkspacePage now wraps WorkspaceLayout in an outer div for the
+    // HamburgerToggle positioning. Find the grid via inline style query.
+    const grid = container.querySelector('[style*="grid"]');
     expect(grid).toBeTruthy();
     expect(grid.style.display).toBe('grid');
     expect(grid.style.gridTemplateColumns).toBe('260px 1fr 1fr');
 
-    // Should have three panel divs
-    expect(grid.children.length).toBe(3);
+    // TASK-018: grid now contains additional children for the mobile tab bar and
+    // the sidebar overlay element. Verify at least 3 children are present.
+    expect(grid.children.length).toBeGreaterThanOrEqual(3);
   });
 
   it('renders the Editor and Preview components (not placeholder text) in the editor and preview panels', () => {

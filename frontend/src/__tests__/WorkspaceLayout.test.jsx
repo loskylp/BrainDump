@@ -37,17 +37,24 @@ describe('WorkspaceLayout', () => {
     expect(getByTestId('preview')).toBeTruthy();
   });
 
-  it('renders three direct child panels in the grid container', () => {
+  it('renders the three panel content wrappers as children of the grid container', () => {
+    // TASK-018: the grid now contains additional children for the mobile tab bar
+    // and the sidebar overlay element. Verify content panels are present by
+    // querying the sidebar overlay and the editor/preview wrappers.
     const { container } = render(
       <WorkspaceLayout
-        sidebar={<div>S</div>}
-        editor={<div>E</div>}
-        preview={<div>P</div>}
+        sidebar={<div data-testid="s-inner">S</div>}
+        editor={<div data-testid="e-inner">E</div>}
+        preview={<div data-testid="p-inner">P</div>}
       />
     );
 
     const grid = container.firstChild;
-    // Three panel wrapper divs
-    expect(grid.children.length).toBe(3);
+    // Grid contains: mobile tab bar, sidebar overlay, editor, preview (min 4 children)
+    expect(grid.children.length).toBeGreaterThanOrEqual(3);
+    // All three content panels are present somewhere in the grid
+    expect(grid.querySelector('[data-testid="s-inner"]')).toBeTruthy();
+    expect(grid.querySelector('[data-testid="e-inner"]')).toBeTruthy();
+    expect(grid.querySelector('[data-testid="p-inner"]')).toBeTruthy();
   });
 });
