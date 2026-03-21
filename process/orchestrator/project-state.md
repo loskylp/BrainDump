@@ -1,27 +1,25 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Commercial
-**Current phase:** DEMO SIGN-OFF
-**Current cycle:** 1
+**Current phase:** CYCLE 2 PLANNING
+**Current cycle:** 2
 **Last updated:** 2026-03-21
 
 ---
 
 ## Where We Are
 
-Cycle 1 execution complete. All 14 tasks verified PASS. Sentinel cycle-level security review complete -- SEC-003 resolved (commit 30e856f), SEC-001 deferred to Cycle 2 as TASK-024. Both High-severity findings are cleared. Demo Sign-off Briefing prepared and presented to the Nexus. Awaiting Nexus approval to close Cycle 1 and begin the retrospective.
+Cycle 1 is fully closed. All 14 tasks verified PASS. CI green. Staging deployed. Demo signed off by the Nexus on 2026-03-21. Playwright demo screenshots (12 screenshots across 5 tasks) committed to version control under `tests/demo/TASK-XXX/`. Sentinel cycle-level security review complete -- SEC-003 resolved, SEC-001 deferred to Cycle 2 as TASK-024.
 
-**CI INCIDENT (2026-03-21):** All CI jobs failing, staging unreachable. Four root causes identified and fixed:
-1. Missing `test:unit` script in `backend/package.json` -- added
-2. Missing `.eslintrc.json` in `backend/` -- created (Node.js/Express, ES2022, commonjs)
-3. Missing migration step in CI `integration-tests` job -- added `npx sequelize-cli db:migrate` before test execution
-4. AC-8/AC-9/AC-10 tests in `schema.test.js` test TASK-014 (Cycle 2) features not yet implemented -- skipped with `.skip`
+The Methodologist retrospective question is pending: "Is there anything you want to change for the next iteration?" Once answered, proceed to Cycle 2 planning via the Planner.
+
+**CI INCIDENT (2026-03-21, RESOLVED):** All CI jobs failing, staging unreachable. Four root causes identified and fixed (see ESC-002 in escalation log). CI pipeline restored.
 
 ## Active Work
 
-**Agent in control:** Orchestrator (Demo Sign-off gate)
-**Current task:** Demo Sign-off Briefing presented to Nexus
+**Agent in control:** Orchestrator (transition to Cycle 2)
+**Current task:** Methodologist retrospective question, then Cycle 2 planning
 **Iteration:** --
-**Waiting for:** Nexus approval at Demo Sign-off gate
+**Waiting for:** Methodologist response to retrospective question
 
 ---
 
@@ -59,14 +57,14 @@ Cycle 1 execution complete. All 14 tasks verified PASS. Sentinel cycle-level sec
 | Requirements Gate | 2026-03-19 | APPROVED | 17 requirements (12 Must Have, 5 Should Have). Auditor: PASS WITH DEFERRALS. |
 | Architecture Gate | 2026-03-19 | APPROVED | 9 ADRs, 55 fitness functions, 17/17 covered. Auditor: PASS. |
 | Plan Gate | 2026-03-19 | APPROVED | 23 tasks across 3 cycles. Cycle 1: 14 tasks (walking skeleton). Cut line: TASK-019 (account deletion) deferred. |
-| Demo Sign-off -- Cycle 1 | 2026-03-21 | PENDING | Briefing presented. 14/14 tasks PASS, 448 tests, Sentinel clear. Awaiting Nexus decision. |
+| Demo Sign-off -- Cycle 1 | 2026-03-21 | ACCEPTED | 14/14 tasks PASS, 448 tests, Sentinel clear. 12 Playwright screenshots reviewed and committed. |
 | Go-Live -- v1.0.0 | -- | -- | |
 
 ---
 
 ## Pending Decisions
 
-Demo Sign-off gate: Nexus must approve Cycle 1 deliverables to close the cycle and proceed to retrospective. Briefing at `process/orchestrator/demo-signoff-briefing-cycle-1.md`.
+None. Cycle 1 Demo Sign-off accepted. Next decision point: Methodologist retrospective, then Plan Gate for Cycle 2.
 
 ---
 
@@ -80,11 +78,11 @@ Demo Sign-off gate: Nexus must approve Cycle 1 deliverables to close the cycle a
 
 ## Iterate Loop State
 
-**Task:** All Cycle 1 tasks complete
+**Task:** Cycle 1 closed
 **Iteration:** --
 **Failure trend:** N/A
 **Convergence check:** N/A
-**Next action:** Awaiting Nexus approval at Demo Sign-off gate. On approval: ask Methodologist retrospective question, then proceed to Cycle 2 planning.
+**Next action:** Ask Methodologist retrospective question. On response: route to Planner for Cycle 2 task plan (three-pass sequence: decomposition, scoring, release map).
 
 ---
 
@@ -104,7 +102,21 @@ Demo Sign-off gate: Nexus must approve Cycle 1 deliverables to close the cycle a
 
 ---
 
-## Standing Routing Rules (Cycle 1)
+## End-of-Cycle Demo Validation Process
+
+At the end of every cycle, before Demo Sign-off can be granted:
+1. Playwright demo scripts (one per task with visual/interactive output) must be run against the staging environment
+2. Screenshots are saved under `tests/demo/TASK-XXX/` (directory name matches the task ID from the demo script)
+3. Screenshot filenames correspond to the numbered scenario in the demo script (e.g., `01-landing-page-unauthenticated.png`)
+4. All screenshots are committed to version control in a dedicated commit referencing the cycle demo sign-off
+5. The Nexus reviews the screenshots against the demo script scenarios before granting sign-off
+6. Demo Sign-off Briefing must reference the screenshot commit hash
+
+This process was codified after Cycle 1 demo validation on 2026-03-21.
+
+---
+
+## Standing Routing Rules (Cycle 1 -- CLOSED)
 
 - Scaffolder runs before first Builder task (14 tasks >= 3 threshold). DONE.
 - Builder execution order (sequential): TASK-016 (DONE), TASK-002 (DONE), TASK-003 (DONE), TASK-004 (DONE), TASK-005 (DONE), TASK-006 (DONE), TASK-008 (DONE), TASK-011 (DONE), TASK-007 (DONE), TASK-009, TASK-010, TASK-012, TASK-013.
@@ -163,6 +175,7 @@ Demo Sign-off gate: Nexus must approve Cycle 1 deliverables to close the cycle a
 | Builder Handoff -- TASK-008 | `process/builder/handoff-notes/TASK-008-iter1-handoff.md` | Iteration 1 |
 | Security Report -- Cycle 1 | `process/sentinel/security-reports/cycle-1-security.md` | v1 (SEC-001 DEFERRED TO CYCLE 2) |
 | Demo Sign-off Briefing -- Cycle 1 | `process/orchestrator/demo-signoff-briefing-cycle-1.md` | v1 |
+| Demo Screenshots -- Cycle 1 | `tests/demo/TASK-{003,007,008,009,011}/` | 12 screenshots (commit c849d8b) |
 
 ---
 
@@ -340,3 +353,4 @@ Demo Sign-off gate: Nexus must approve Cycle 1 deliverables to close the cycle a
 | Requirements Gate | 2026-03-19 | Approved -- 17 requirements locked (12 Must Have, 5 Should Have) |
 | Architecture Gate | 2026-03-19 | Approved -- 9 ADRs, 55 fitness functions, full requirements coverage, AUDIT-003 resolved |
 | Plan Gate | 2026-03-19 | Approved -- 23 tasks, 3 cycles, 1 deferred (TASK-019 account deletion) |
+| Demo Sign-off -- Cycle 1 | 2026-03-21 | Accepted -- 14/14 tasks, 12 screenshots reviewed, demo validation process codified |
