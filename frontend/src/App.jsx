@@ -5,10 +5,13 @@
  * Uses React Router v6 <Routes> / <Route> components.
  *
  * Route map:
- *   /              -- LandingPage (public; authenticated users redirect to /workspace)
- *   /login         -- LoginPage (public)
- *   /register      -- RegisterPage (public)
- *   /workspace     -- WorkspacePage (protected via ProtectedRoute)
+ *   /                   -- LandingPage (public; authenticated users redirect to /workspace)
+ *   /login              -- LoginPage (public)
+ *   /register           -- RegisterPage (public)
+ *   /workspace          -- WorkspacePage (protected via ProtectedRoute)
+ *   /forgot-password    -- ForgotPasswordPage (public) -- TODO: TASK-015
+ *   /reset-password     -- ResetPasswordPage (public, reads ?token= param) -- TODO: TASK-015
+ *   /settings           -- AccountSettingsPage (protected) -- TODO: TASK-019
  *
  * ProtectedRoute component (src/components/common/ProtectedRoute.jsx):
  *   Reads authentication state from useAuth hook.
@@ -27,6 +30,11 @@ import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import WorkspacePage from './pages/WorkspacePage.jsx';
+// TODO: TASK-015 -- uncomment when implementing password reset pages
+// import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
+// import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
+// TODO: TASK-019 -- uncomment when implementing account settings page
+// import AccountSettingsPage from './pages/AccountSettingsPage.jsx';
 
 /**
  * Landing route wrapper.
@@ -60,6 +68,11 @@ function App() {
           </ProtectedRoute>
         }
       />
+      {/* TODO: TASK-015 -- add these routes when implementing password reset */}
+      {/* <Route path="/forgot-password" element={<ForgotPasswordPage />} /> */}
+      {/* <Route path="/reset-password" element={<ResetPasswordPage />} /> */}
+      {/* TODO: TASK-019 -- add this route when implementing account settings */}
+      {/* <Route path="/settings" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} /> */}
     </Routes>
   );
 }

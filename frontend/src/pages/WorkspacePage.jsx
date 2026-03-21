@@ -16,6 +16,9 @@
  *   - editorBody: the current content of the editor (string). Initialised from
  *     activeNote.body when a note is opened; updated on every keystroke.
  *     This is the single source of truth for the editor and preview panels.
+ *   - searchResults: array of search results from GET /api/search (TASK-014).
+ *     Null when no active query (catalog shown); [] when query returned zero
+ *     matches ("No notes found" shown); non-empty when matches found.
  *
  * Data flow:
  *   Mount -> getNotes() -> populate notes state in Sidebar
@@ -26,6 +29,8 @@
  *   Save button click or Cmd/Ctrl+S -> updateNote(activeNoteId, { title, body }) (TASK-009)
  *   editorBody change -> useAutoSave debounce timer resets (TASK-012)
  *   editorBody change -> useVersionTimer idle timer resets (TASK-013)
+ *   SearchBar.onResults -> set searchResults -> sidebar shows results list (TASK-014)
+ *   SearchBar result click -> handleSelectNote(noteId) -> opens note in editor (TASK-014)
  *
  * Hook wiring:
  *   - useAuth: provides user context and logout function (TASK-004)
@@ -44,6 +49,7 @@ import { useAutoSave } from '../hooks/useAutoSave.js';
 import { useVersionTimer } from '../hooks/useVersionTimer.js';
 import VersionHistory from '../components/editor/VersionHistory.jsx';
 import { getNotes, createNote, getNote, updateNote, deleteNote } from '../api/notes.js';
+import SearchBar from '../components/Search/SearchBar.jsx';
 
 /**
  * @returns {JSX.Element}
@@ -89,6 +95,17 @@ function WorkspacePage() {
    * @type {[string, Function]}
    */
   const [editorBody, setEditorBody] = useState('');
+
+  /**
+   * Search results from GET /api/search (TASK-014).
+   * Null when there is no active search query (catalog is shown).
+   * [] when the active query returned zero matches ("No notes found" shown).
+   * Non-empty array when matches were found (results list shown).
+   * Set to null by handleSearchClear (query cleared).
+   * Set to [] or [...items] by handleSearchResults (API response received).
+   * @type {[Array<{id: string, title: string, snippet: string}>|null, Function]}
+   */
+  const [searchResults, setSearchResults] = useState(null);
 
   // ---------------------------------------------------------------------------
   // Auto-save hook (TASK-012)
@@ -363,6 +380,31 @@ function WorkspacePage() {
   }, []);
 
   /**
+   * Handles incoming results from the SearchBar component (TASK-014).
+   *
+   * Stores the results array in state so the sidebar renders the search
+   * results list instead of the full note catalog. When the API returns zero
+   * matches for an active query, results is [] and the "No notes found"
+   * message is shown. Distinguishing "zero results" from "query cleared" is
+   * the responsibility of handleSearchClear (called via SearchBar's onClear).
+   *
+   * @param {Array<{id: string, title: string, snippet: string}>} results
+   */
+  const handleSearchResults = useCallback((results) => {
+    setSearchResults(results);
+  }, []);
+
+  /**
+   * Handles query clear events from the SearchBar component (TASK-014).
+   *
+   * Called when the user clears the search input. Resets searchResults to
+   * null so the normal note catalog is restored in the sidebar.
+   */
+  const handleSearchClear = useCallback(() => {
+    setSearchResults(null);
+  }, []);
+
+  /**
    * Handles restoration from the VersionHistory panel (TASK-013 AC-8).
    * Updates the editor content with the restored version's title and body.
    *
@@ -449,18 +491,83 @@ function WorkspacePage() {
     );
   }
 
+  /**
+   * Renders the sidebar slot containing: search bar, search results (when an
+   * active query exists), or the normal note catalog (when no search query).
+   *
+   * When searchResults is non-null, the note catalog is replaced by the search
+   * results list. Each result shows the note title and a snippet with
+   * highlighted terms (rendered via dangerouslySetInnerHTML because the content
+   * comes from server-generated ts_headline output, not user-supplied HTML).
+   * Clicking a result opens the note in the editor.
+   *
+   * When searchResults is null (query cleared or no query entered), the normal
+   * Sidebar catalog is displayed.
+   *
+   * @returns {JSX.Element}
+   */
+  function renderSidebar() {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="px-2 py-2 border-b border-border">
+          <SearchBar
+            data-testid="search-bar"
+            onResults={handleSearchResults}
+            onClear={handleSearchClear}
+            placeholder="Search notes..."
+          />
+        </div>
+        {searchResults !== null ? (
+          <div className="flex-1 overflow-y-auto">
+            {searchResults.length === 0 ? (
+              <p
+                data-testid="search-no-results"
+                className="px-3 py-4 text-xs font-mono text-text-secondary"
+              >
+                No notes found.
+              </p>
+            ) : (
+              <ul data-testid="search-results-list">
+                {searchResults.map((result) => (
+                  <li key={result.id}>
+                    <button
+                      data-testid={`search-result-${result.id}`}
+                      onClick={() => handleSelectNote(result.id)}
+                      className="w-full text-left px-3 py-2 border-b border-border hover:bg-border transition-colors"
+                    >
+                      <p className="text-sm font-mono text-text-primary truncate">
+                        {result.title || 'Untitled'}
+                      </p>
+                      {result.snippet && (
+                        <p
+                          className="text-xs font-mono text-text-secondary mt-1 line-clamp-2"
+                          /* snippet is server-generated ts_headline output containing <mark> tags — not user HTML */
+                          dangerouslySetInnerHTML={{ __html: result.snippet }}
+                        />
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : (
+          <Sidebar
+            notes={notes}
+            activeNoteId={activeNoteId}
+            onSelectNote={handleSelectNote}
+            onCreateNote={handleCreateNote}
+            user={user}
+            onLogout={handleLogout}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <WorkspaceLayout
-      sidebar={
-        <Sidebar
-          notes={notes}
-          activeNoteId={activeNoteId}
-          onSelectNote={handleSelectNote}
-          onCreateNote={handleCreateNote}
-          user={user}
-          onLogout={handleLogout}
-        />
-      }
+      sidebar={renderSidebar()}
       editor={renderEditorPanel()}
       preview={
         showVersionHistory && activeNoteId ? (

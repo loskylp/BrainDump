@@ -7,7 +7,6 @@
  * a read-only cross-cutting operation distinct from CRUD.
  */
 
-// TODO: TASK-014
 'use strict';
 
 const express = require('express');
@@ -40,8 +39,21 @@ router.use(rlsContext);
  *   - Search completes in < 200ms for a 200-note collection (FF-D24)
  */
 router.get('/', async (req, res, next) => {
-  // TODO: TASK-014 -- implement
-  next(new Error('Not implemented'));
+  const q = req.query.q;
+
+  if (!q || !q.trim()) {
+    return res.status(400).json({ error: 'EMPTY_QUERY' });
+  }
+
+  try {
+    const results = await searchService.search(req.session.userId, q);
+    return res.status(200).json({ results });
+  } catch (err) {
+    if (err.message === 'EMPTY_QUERY') {
+      return res.status(400).json({ error: 'EMPTY_QUERY' });
+    }
+    return next(err);
+  }
 });
 
 module.exports = router;
