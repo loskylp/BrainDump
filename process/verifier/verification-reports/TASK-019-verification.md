@@ -23,7 +23,18 @@ Two deviations noted by the Builder are confirmed correct:
 
 ## CI Status
 
-*Pending — commit and push to follow. CI results to be recorded after push.*
+| Run | Commit | Status |
+|---|---|---|
+| 23386531154 | 4f5fbea (Builder) | success — all 5 jobs green |
+| 23386712360 | 9f9caa8 (Verifier artefacts) | success — all 5 jobs green |
+
+| Job | Duration | Result |
+|---|---|---|
+| Lint | 14s | pass |
+| Unit Tests | 37–44s | pass |
+| Integration Tests | 26–33s | pass |
+| Migration Test | 2m15–23s | pass |
+| Build Docker Image | 26–30s | pass |
 
 ---
 
@@ -136,7 +147,7 @@ FF-D09 is a durability fitness function (cascade delete), not a latency or throu
   - `Folder.findAll({ where: { user_id } })` returns empty
   - Full cascade scenario verifies all four in a single test
 
-**Verdict:** PASS (pending CI confirmation of DB-level cascade)
+**Verdict:** PASS
 
 ---
 
@@ -153,7 +164,7 @@ FF-D09 is a durability fitness function (cascade delete), not a latency or throu
 - Session cookie is destroyed server-side before the 200 response; GET /api/auth/me with the old cookie returns 401 (stale session reference cleared by the `GET /me` handler's null-user guard)
 - Verifier acceptance tests verify: post-deletion login returns 401, old session cookie returns 401 on /api/auth/me, re-registration with the same email succeeds
 
-**Verdict:** PASS (pending CI confirmation)
+**Verdict:** PASS
 
 ---
 
@@ -179,7 +190,7 @@ FF-D09 is a durability fitness function (cascade delete), not a latency or throu
 
 The cascade delete is implemented via `user.destroy()` in `authService.deleteAccount`. The acceptance test block "AC-3 [REQ-014] / FF-D09" verifies that after a successful DELETE request, the user, all notes, all note versions, and all folders are absent from the database. This is the direct instrumentation of FF-D09 as a CI acceptance test.
 
-**Verdict:** PASS (pending CI run)
+**Verdict:** PASS
 
 ---
 
@@ -215,29 +226,12 @@ The file `backend/src/routes/auth.js` contains two consecutive JSDoc blocks imme
 |---|---|---|
 | AC-1: Authenticated user can initiate account deletion | PASS | Route 200, unit tests, frontend component |
 | AC-2: Confirmation step prevents accidental deletion | PASS | 400/401 guards, two-phase UI, unit + acceptance tests |
-| AC-3: All data permanently deleted (CASCADE / FF-D09) | PASS (pending CI) | user.destroy(), acceptance tests verify DB rows absent |
-| AC-4: User cannot log in after deletion | PASS (pending CI) | login 401, session invalidated, acceptance tests |
+| AC-3: All data permanently deleted (CASCADE / FF-D09) | PASS | user.destroy(), acceptance tests verify DB rows absent; CI green |
+| AC-4: User cannot log in after deletion | PASS | login 401, session invalidated, acceptance tests; CI green |
 | AC-5: Cancelling does not delete anything | PASS | Cancel handler, server rejection, acceptance tests |
-| FF-D09: Cascade delete verified | PASS (pending CI) | Acceptance test block traces to FF-D09 |
+| FF-D09: Cascade delete verified | PASS | Acceptance test block traces to FF-D09; CI Integration Tests green |
 
 **Overall verdict: PASS**
 
-Commit and push are required before CI confirmation. The commit should include:
-- `backend/src/services/authService.js` (deleteAccount function)
-- `backend/src/routes/auth.js` (DELETE /api/auth/account endpoint)
-- `backend/tests/unit/deleteAccount.test.js` (Builder unit tests)
-- `backend/tests/unit/notesRoute.updateNote.test.js` (Builder unit tests)
-- `backend/tests/unit/noteService.updateNote.test.js` (Builder unit tests)
-- `frontend/src/components/auth/DeleteAccountSection.jsx`
-- `frontend/src/pages/AccountSettingsPage.jsx`
-- `frontend/src/pages/WorkspacePage.jsx`
-- `frontend/src/App.jsx`
-- `frontend/src/api/notes.js`
-- `frontend/src/components/common/Sidebar.jsx`
-- `frontend/src/__tests__/DeleteAccountSection.test.jsx`
-- `frontend/src/__tests__/WorkspaceNoteEdit.test.jsx`
-- `frontend/src/__tests__/notesApi.test.js`
-- `backend/tests/acceptance/TASK-019-account-deletion.test.js` (Verifier acceptance tests)
-- `tests/demo/TASK-019-demo.md` (Verifier demo script)
-- `process/orchestrator/project-state.md` (Builder update)
-- `process/verifier/verification-reports/TASK-019-verification.md` (this report)
+Builder commit: `4f5fbea` — pushed to `main`, CI run 23386531154 green.
+Verifier commit: `9f9caa8` — pushed to `main`, CI run 23386712360 green.
