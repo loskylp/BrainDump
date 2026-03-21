@@ -33,6 +33,14 @@ jest.mock('../../src/services/noteService', () => ({
   deleteNote: jest.fn(),
 }));
 
+jest.mock('../../src/services/tagService', () => ({
+  getNotesWithTags: jest.fn(),
+  createTag: jest.fn(),
+  deleteTag: jest.fn(),
+  addTagToNote: jest.fn(),
+  removeTagFromNote: jest.fn(),
+}));
+
 // Mock authenticate: by default, allow all requests through with a test userId.
 // Tests that need to test 401 override this mock.
 jest.mock('../../src/middleware/authenticate', () =>

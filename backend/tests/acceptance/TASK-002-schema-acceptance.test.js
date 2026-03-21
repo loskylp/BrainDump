@@ -70,17 +70,18 @@ describe('AC-1 [REQ-012]: All 5 tables exist after migration', () => {
     expect(rows[0].exists).toBe(false);
   });
 
-  test('[VERIFIER-ADDED] exactly 7 tables exist in public schema (5 app + SequelizeMeta + session)', async () => {
+  test('[VERIFIER-ADDED] exactly 9 tables exist in public schema (7 app + SequelizeMeta + session)', async () => {
     // Given: a cleanly migrated database
     // When: all base tables in the public schema are counted
-    // Then: exactly 7 are present — 5 application tables plus SequelizeMeta plus the session table
-    //       (added by TASK-003 migration 20260319000007-create-sessions.js)
+    // Then: exactly 9 are present — 7 application tables (5 original + tags + note_tags)
+    //       plus SequelizeMeta plus the session table
+    //       (tags and note_tags added by TASK-027 migrations)
     const [rows] = await sequelize.query(
       `SELECT COUNT(*) AS count
        FROM information_schema.tables
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
     );
-    expect(parseInt(rows[0].count, 10)).toBe(7);
+    expect(parseInt(rows[0].count, 10)).toBe(9);
   });
 });
 
@@ -381,12 +382,13 @@ describe('AC-6 [REQ-011/REQ-012]: Migration role not blocked by RLS (OBS-002)', 
     expect(parseInt(rows[0].count, 10)).toBe(5);
   });
 
-  test('[VERIFIER-ADDED] SequelizeMeta records all 7 migration files as applied', async () => {
-    // Given: all 7 migration files have been run (6 TASK-002 migrations + 1 TASK-003 session migration)
+  test('[VERIFIER-ADDED] SequelizeMeta records all 10 migration files as applied', async () => {
+    // Given: all 10 migration files have been run (6 TASK-002 migrations + 1 TASK-003 session
+    //         migration + 3 TASK-027 migrations: create-tags, create-note-tags, add-note-tags-fks)
     // When: SequelizeMeta is queried
-    // Then: 7 entries exist — no migration was skipped or failed silently
+    // Then: 10 entries exist — no migration was skipped or failed silently
     const [rows] = await sequelize.query('SELECT name FROM "SequelizeMeta" ORDER BY name');
-    expect(rows.length).toBe(7);
+    expect(rows.length).toBe(10);
     const names = rows.map(r => r.name);
     expect(names.some(n => n.includes('create-users'))).toBe(true);
     expect(names.some(n => n.includes('create-folders'))).toBe(true);
@@ -674,7 +676,8 @@ describe('AC-10 [REQ-012]: Schema introspection confirms all expected FK constra
       table: 'password_reset_tokens', column: 'user_id', ref_table: 'users', ref_column: 'id', delete_rule: 'CASCADE',
     });
 
-    // Total count must be exactly 5 — no unexpected FKs
-    expect(fkMap.length).toBe(5);
+    // Total count must be exactly 8 — 5 original FKs plus 3 added by TASK-027
+    // (note_tags.note_id -> notes.id, note_tags.tag_id -> tags.id, tags.user_id -> users.id)
+    expect(fkMap.length).toBe(8);
   });
 });

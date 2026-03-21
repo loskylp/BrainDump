@@ -33,6 +33,10 @@ jest.mock('../../src/models', () => ({
   sequelize: {
     query: mockQuery,
   },
+  Tag: {},
+  NoteTag: {
+    findAll: jest.fn().mockResolvedValue([]),
+  },
 }));
 
 // ---------------------------------------------------------------------------

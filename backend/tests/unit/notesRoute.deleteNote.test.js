@@ -45,6 +45,14 @@ jest.mock('../../src/services/noteService', () => ({
   deleteNote: jest.fn(),
 }));
 
+jest.mock('../../src/services/tagService', () => ({
+  getNotesWithTags: jest.fn(),
+  createTag: jest.fn(),
+  deleteTag: jest.fn(),
+  addTagToNote: jest.fn(),
+  removeTagFromNote: jest.fn(),
+}));
+
 jest.mock('../../src/middleware/authenticate', () =>
   jest.fn((req, _res, next) => {
     req.session = { userId: USER_ID };

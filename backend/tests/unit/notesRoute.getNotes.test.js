@@ -5,9 +5,11 @@
  *   - Returns 200 with { notes: [...] } on success
  *   - Returns 401 when the request is unauthenticated
  *   - Returns empty array when user has no notes
- *   - Delegates to noteService.getNotes with the session userId
+ *   - Delegates to tagService.getNotesWithTags with the session userId
+ *   - Passes null tagIds when no ?tags= query param is given
+ *   - Passes parsed tag ID array when ?tags=id1,id2 is given
  *
- * noteService is mocked — no database required.
+ * tagService and noteService are mocked — no database required.
  * authenticate and rlsContext middleware are mocked to isolate route logic.
  *
  * REQ-008: AC-2 (sidebar lists all user notes via GET /api/notes)
@@ -30,6 +32,14 @@ jest.mock('../../src/services/noteService', () => ({
   deleteNote: jest.fn(),
 }));
 
+jest.mock('../../src/services/tagService', () => ({
+  getNotesWithTags: jest.fn(),
+  createTag: jest.fn(),
+  deleteTag: jest.fn(),
+  addTagToNote: jest.fn(),
+  removeTagFromNote: jest.fn(),
+}));
+
 // Mock authenticate: by default, allow all requests through with a test userId.
 jest.mock('../../src/middleware/authenticate', () =>
   jest.fn((req, res, next) => {
@@ -48,7 +58,7 @@ jest.mock('../../src/middleware/rlsContext', () =>
 // ---------------------------------------------------------------------------
 
 const notesRouter = require('../../src/routes/notes');
-const noteService = require('../../src/services/noteService');
+const tagService = require('../../src/services/tagService');
 const authenticate = require('../../src/middleware/authenticate');
 
 // ---------------------------------------------------------------------------
@@ -95,6 +105,7 @@ function makeNoteSummary(overrides = {}) {
     title: 'Test Note',
     updated_at: '2026-03-20T10:00:00.000Z',
     folder_id: null,
+    tags: [],
     ...overrides,
   };
 }
@@ -121,7 +132,7 @@ describe('GET /api/notes (TASK-008)', () => {
 
   describe('successful note listing', () => {
     it('returns 200 on successful retrieval', async () => {
-      noteService.getNotes.mockResolvedValue([]);
+      tagService.getNotesWithTags.mockResolvedValue([]);
 
       const res = await request(app).get('/api/notes');
 
@@ -129,7 +140,7 @@ describe('GET /api/notes (TASK-008)', () => {
     });
 
     it('returns the notes array nested under a "notes" key', async () => {
-      noteService.getNotes.mockResolvedValue([]);
+      tagService.getNotesWithTags.mockResolvedValue([]);
 
       const res = await request(app).get('/api/notes');
 
@@ -138,39 +149,55 @@ describe('GET /api/notes (TASK-008)', () => {
     });
 
     it('returns an empty array when the user has no notes', async () => {
-      noteService.getNotes.mockResolvedValue([]);
+      tagService.getNotesWithTags.mockResolvedValue([]);
 
       const res = await request(app).get('/api/notes');
 
       expect(res.body.notes).toEqual([]);
     });
 
-    it('returns the notes from noteService in the response', async () => {
+    it('returns the notes from tagService in the response', async () => {
       const notes = [
         makeNoteSummary({ id: NOTE_ID_1, title: 'Note A' }),
         makeNoteSummary({ id: NOTE_ID_2, title: 'Note B' }),
       ];
-      noteService.getNotes.mockResolvedValue(notes);
+      tagService.getNotesWithTags.mockResolvedValue(notes);
 
       const res = await request(app).get('/api/notes');
 
       expect(res.body.notes).toEqual(notes);
     });
 
-    it('delegates to noteService.getNotes with the session userId', async () => {
-      noteService.getNotes.mockResolvedValue([]);
+    it('delegates to tagService.getNotesWithTags with the session userId', async () => {
+      tagService.getNotesWithTags.mockResolvedValue([]);
 
       await request(app).get('/api/notes');
 
-      expect(noteService.getNotes).toHaveBeenCalledWith(USER_ID);
+      expect(tagService.getNotesWithTags).toHaveBeenCalledWith(USER_ID, null);
     });
 
-    it('calls noteService.getNotes exactly once per request', async () => {
-      noteService.getNotes.mockResolvedValue([]);
+    it('calls tagService.getNotesWithTags exactly once per request', async () => {
+      tagService.getNotesWithTags.mockResolvedValue([]);
 
       await request(app).get('/api/notes');
 
-      expect(noteService.getNotes).toHaveBeenCalledTimes(1);
+      expect(tagService.getNotesWithTags).toHaveBeenCalledTimes(1);
+    });
+
+    it('passes null tagIds when no ?tags= query param is given', async () => {
+      tagService.getNotesWithTags.mockResolvedValue([]);
+
+      await request(app).get('/api/notes');
+
+      expect(tagService.getNotesWithTags).toHaveBeenCalledWith(USER_ID, null);
+    });
+
+    it('passes parsed tag ID array when ?tags=tag-id-1 is given', async () => {
+      tagService.getNotesWithTags.mockResolvedValue([]);
+
+      await request(app).get('/api/notes?tags=tag-id-1');
+
+      expect(tagService.getNotesWithTags).toHaveBeenCalledWith(USER_ID, ['tag-id-1']);
     });
   });
 
@@ -190,7 +217,7 @@ describe('GET /api/notes (TASK-008)', () => {
       expect(res.status).toBe(401);
     });
 
-    it('does not call noteService when unauthenticated', async () => {
+    it('does not call tagService when unauthenticated', async () => {
       authenticate.mockImplementation((_req, res, _next) => {
         res.status(401).json({ error: 'Authentication required' });
       });
@@ -198,7 +225,7 @@ describe('GET /api/notes (TASK-008)', () => {
 
       await request(app).get('/api/notes');
 
-      expect(noteService.getNotes).not.toHaveBeenCalled();
+      expect(tagService.getNotesWithTags).not.toHaveBeenCalled();
     });
   });
 
@@ -208,7 +235,7 @@ describe('GET /api/notes (TASK-008)', () => {
 
   describe('error propagation', () => {
     it('calls next(err) on unexpected service errors', async () => {
-      noteService.getNotes.mockRejectedValue(new Error('Unexpected DB error'));
+      tagService.getNotesWithTags.mockRejectedValue(new Error('Unexpected DB error'));
 
       const res = await request(app).get('/api/notes');
 

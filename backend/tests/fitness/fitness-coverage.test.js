@@ -118,7 +118,7 @@ describe('FF-D12: All expected FK constraints exist in the schema', () => {
   // FF-D12: FK constraints enforce durability relationships at the database level.
   // This test introspects the live schema rather than mocking — it confirms the
   // migration was applied correctly in the current environment.
-  test('all 5 expected FK constraints are present', async () => {
+  test('all 8 expected FK constraints are present', async () => {
     const [rows] = await sequelize.query(`
       SELECT
         tc.table_name,
@@ -169,8 +169,9 @@ describe('FF-D12: All expected FK constraints exist in the schema', () => {
       expect.objectContaining({ table: 'password_reset_tokens', column: 'user_id', ref_table: 'users', delete_rule: 'CASCADE' })
     );
 
-    // Exactly 5 FKs — no undeclared constraints
-    expect(fks.length).toBe(5);
+    // Exactly 8 FKs — 5 original plus 3 added by TASK-027
+    // (note_tags.note_id -> notes.id, note_tags.tag_id -> tags.id, tags.user_id -> users.id)
+    expect(fks.length).toBe(8);
   });
 });
 
