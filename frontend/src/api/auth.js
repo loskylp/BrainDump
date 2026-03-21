@@ -5,7 +5,7 @@
  * corresponds to one backend route in src/routes/auth.js.
  */
 
-import { post, apiRequest } from './client.js';
+import { post } from './client.js';
 
 /**
  * Registers a new user account.
