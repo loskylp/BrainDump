@@ -23,6 +23,7 @@
 const USER_ID = 'aaaaaaaa-0000-0000-0000-000000000001';
 const OTHER_USER_ID = 'bbbbbbbb-0000-0000-0000-000000000002';
 const NOTE_ID = 'dddddddd-0000-0000-0000-000000000003';
+const FOLDER_ID = 'cccccccc-0000-0000-0000-000000000004';
 
 // ---------------------------------------------------------------------------
 // Mock setup
@@ -60,7 +61,7 @@ jest.mock('../../src/models', () => {
   return { Note, NoteVersion, Folder, sequelize };
 });
 
-const { Note, NoteVersion, sequelize } = require('../../src/models');
+const { Note, NoteVersion, Folder, sequelize } = require('../../src/models');
 
 // ---------------------------------------------------------------------------
 // Subject under test — imported AFTER mocks are set up
@@ -104,6 +105,9 @@ describe('noteService.updateNote (TASK-009)', () => {
     Note.scope.mockReturnValue(Note);
     Note.findOne.mockResolvedValue(makeSaveableNote());
     NoteVersion.create.mockResolvedValue({});
+    // Default: Folder scope chain returns a Folder mock with findOne resolving a folder
+    Folder.scope.mockReturnValue(Folder);
+    Folder.findOne.mockResolvedValue({ id: FOLDER_ID });
   });
 
   // -------------------------------------------------------------------------
@@ -294,6 +298,69 @@ describe('noteService.updateNote (TASK-009)', () => {
       Note.findOne.mockResolvedValue(note);
 
       await expect(updateNote(NOTE_ID, USER_ID, { title: 'T' })).rejects.toThrow('constraint violation');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // SEC-013: Folder ownership validation when folderId is provided
+  // -------------------------------------------------------------------------
+
+  describe('folder ownership validation (SEC-013)', () => {
+    it('validates the folder belongs to the user when folderId is provided', async () => {
+      await updateNote(NOTE_ID, USER_ID, { folderId: FOLDER_ID });
+
+      expect(Folder.scope).toHaveBeenCalledWith({ method: ['forUser', USER_ID] });
+      expect(Folder.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: FOLDER_ID } })
+      );
+    });
+
+    it('throws FOLDER_NOT_FOUND when the folder does not exist for the user', async () => {
+      Folder.findOne.mockResolvedValue(null);
+
+      await expect(
+        updateNote(NOTE_ID, USER_ID, { folderId: FOLDER_ID })
+      ).rejects.toThrow('FOLDER_NOT_FOUND');
+    });
+
+    it('throws FOLDER_NOT_FOUND when folderId belongs to a different user', async () => {
+      // Simulates the forUser scope returning null for a folder owned by another user
+      Folder.findOne.mockResolvedValue(null);
+
+      await expect(
+        updateNote(NOTE_ID, OTHER_USER_ID, { folderId: FOLDER_ID })
+      ).rejects.toThrow('FOLDER_NOT_FOUND');
+    });
+
+    it('does not call Folder.findOne when folderId is null (moving note to root is allowed)', async () => {
+      await updateNote(NOTE_ID, USER_ID, { folderId: null });
+
+      expect(Folder.findOne).not.toHaveBeenCalled();
+    });
+
+    it('does not call Folder.findOne when folderId is not present in updates', async () => {
+      await updateNote(NOTE_ID, USER_ID, { title: 'No folder change' });
+
+      expect(Folder.findOne).not.toHaveBeenCalled();
+    });
+
+    it('assigns the folder_id to the note after a successful ownership check', async () => {
+      const note = makeSaveableNote({ folder_id: null });
+      Note.findOne.mockResolvedValue(note);
+
+      await updateNote(NOTE_ID, USER_ID, { folderId: FOLDER_ID });
+
+      expect(note.folder_id).toBe(FOLDER_ID);
+    });
+
+    it('passes the transaction to Folder.findOne', async () => {
+      const mockTxn = sequelize._mockTransaction;
+
+      await updateNote(NOTE_ID, USER_ID, { folderId: FOLDER_ID });
+
+      expect(Folder.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ transaction: mockTxn })
+      );
     });
   });
 });

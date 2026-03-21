@@ -67,8 +67,8 @@ app.use(cors({
   credentials: true,
 }));
 
-// 3. JSON body parsing
-app.use(express.json());
+// 3. JSON body parsing (SEC-002: explicit 1 MB limit prevents request body amplification)
+app.use(express.json({ limit: '1mb' }));
 
 // 4. Session middleware (ADR-002: express-session + connect-pg-simple)
 if (sessionMiddleware) {
@@ -129,15 +129,17 @@ const ERROR_MAP = {
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, _next) => {
   const status = ERROR_MAP[err.code] || ERROR_MAP[err.message] || 500;
-  const message = err.message || 'Internal server error';
+  const isServerError = status === 500;
 
-  if (status === 500) {
+  // SEC-007: Log 500s server-side but never expose internal error details to the
+  // client. Sequelize messages, stack traces, and column names must not leak.
+  if (isServerError) {
     console.error('Unhandled error:', err);
   }
 
   res.status(status).json({
-    error: err.code || err.message || 'INTERNAL_ERROR',
-    message,
+    error: isServerError ? 'INTERNAL_ERROR' : (err.code || err.message || 'INTERNAL_ERROR'),
+    message: isServerError ? 'Internal server error' : (err.message || 'Internal server error'),
   });
 });
 

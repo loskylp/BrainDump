@@ -146,10 +146,14 @@ router.post('/logout', async (req, res, next) => {
   try {
     await authService.logout(req.session);
 
-    // Clear the session cookie from the client
+    // Clear the session cookie from the client.
+    // SEC-005: secure and path must match the original cookie attributes so
+    // browsers honouring the Secure flag actually remove the cookie.
     res.clearCookie('connect.sid', {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      path: '/',
     });
 
     res.status(200).json({ message: 'Logged out' });
@@ -312,9 +316,12 @@ router.delete('/account', async (req, res, next) => {
       });
     });
 
+    // SEC-005: secure and path must match the original cookie attributes.
     res.clearCookie('connect.sid', {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      path: '/',
     });
 
     res.status(200).json({ message: 'Account deleted successfully' });

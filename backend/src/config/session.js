@@ -38,6 +38,13 @@ const pgSession = require('connect-pg-simple')(session);
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+// SEC-004: Fail fast if SESSION_SECRET is absent outside of test runs.
+// A missing secret causes all sessions to be signed with the hardcoded
+// fallback, which is publicly known and allows session cookie forgery.
+if (!process.env.SESSION_SECRET && process.env.NODE_ENV !== 'test') {
+  throw new Error('SESSION_SECRET environment variable is required in non-test environments');
+}
+
 const sessionMiddleware = session({
   store: new pgSession({
     conString: process.env.POSTGRES_URL,

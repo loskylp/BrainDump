@@ -142,10 +142,12 @@ async function getNote(noteId, userId) {
  * @param {string} [updates.folderId] - New folder UUID or null to move to root
  * @returns {Promise<Note>} The updated Note instance with new updated_at
  * @throws {Error} With message 'NOT_FOUND' if note does not exist or belongs to a different user
+ * @throws {Error} With message 'FOLDER_NOT_FOUND' if folderId is provided but does not exist or belong to userId
  *
  * @precondition At least one of title, body, or folderId is provided
  * @postcondition notes.updated_at is set to current timestamp
  * @postcondition No NoteVersion row is created (that is versionService's job)
+ * @postcondition When folderId is provided, the folder is verified to belong to userId before assignment (SEC-013)
  */
 async function updateNote(noteId, userId, updates) {
   return sequelize.transaction(async (transaction) => {
@@ -161,6 +163,19 @@ async function updateNote(noteId, userId, updates) {
 
     if (!note) {
       throw new Error('NOT_FOUND');
+    }
+
+    // SEC-013: Validate folder ownership before assigning folderId.
+    // The DB FK constraint alone does not enforce user isolation — it only
+    // verifies the folder UUID exists, regardless of which user owns it.
+    if (Object.prototype.hasOwnProperty.call(updates, 'folderId') && updates.folderId !== null) {
+      const folder = await Folder.scope({ method: ['forUser', userId] }).findOne({
+        where: { id: updates.folderId },
+        transaction,
+      });
+      if (!folder) {
+        throw new Error('FOLDER_NOT_FOUND');
+      }
     }
 
     if (updates.title !== undefined) {
