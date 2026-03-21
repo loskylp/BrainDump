@@ -10,11 +10,11 @@
  * (ADR-003). Nesting is not supported.
  */
 
-// TODO: TASK-017
 'use strict';
 
 const express = require('express');
 const router = express.Router();
+const { Folder } = require('../models');
 const authenticate = require('../middleware/authenticate');
 const ownershipGuard = require('../middleware/ownershipGuard');
 const rlsContext = require('../middleware/rlsContext');
@@ -26,18 +26,24 @@ router.use(rlsContext);
 /**
  * GET /api/folders
  *
- * Returns all folders belonging to the authenticated user.
+ * Returns all folders belonging to the authenticated user, sorted by name ASC.
  *
  * @returns {200} { folders: Array<{ id, name, created_at, updated_at }> }
  * @returns {401} if not authenticated
  *
- * Postconditions:
- *   - Returns only folders where user_id = req.session.userId
- *   - Empty array when user has no folders (not 404)
+ * @postcondition Returns only folders where user_id = req.session.userId
+ * @postcondition Empty array when user has no folders (not 404)
+ * @postcondition Results ordered alphabetically by name
  */
 router.get('/', async (req, res, next) => {
-  // TODO: TASK-017 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const folders = await Folder.scope({ method: ['forUser', req.session.userId] }).findAll({
+      order: [['name', 'ASC']],
+    });
+    res.json({ folders });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
@@ -49,65 +55,96 @@ router.get('/', async (req, res, next) => {
  *   { name: string }
  *
  * @returns {201} { folder: { id, name, created_at, updated_at } }
- * @returns {400} { error: "VALIDATION_ERROR" } -- name is missing or empty
+ * @returns {400} { error: "VALIDATION_ERROR" } -- name is missing, empty, or blank
  *
- * Postconditions:
- *   - Folder row persisted with user_id = req.session.userId
+ * @precondition req.body.name is a non-empty string
+ * @postcondition Folder row persisted with user_id = req.session.userId
+ * @postcondition Name is stored trimmed
  */
 router.post('/', async (req, res, next) => {
-  // TODO: TASK-017 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const rawName = req.body && req.body.name;
+    if (!rawName || !rawName.trim()) {
+      return res.status(400).json({ error: 'VALIDATION_ERROR' });
+    }
+
+    const trimmedName = rawName.trim();
+    const folder = await Folder.create({
+      user_id: req.session.userId,
+      name: trimmedName,
+    });
+
+    res.status(201).json({ folder });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
  * GET /api/folders/:id
  *
- * Returns a single folder.
+ * Returns a single folder. Ownership is verified by ownershipGuard which
+ * loads the folder into req.resource.
  *
  * @returns {200} { folder: { id, name, created_at, updated_at } }
- * @returns {404} { error: "Not found" } -- folder does not exist or belongs to another user
+ * @returns {404} if folder does not exist or belongs to another user
  */
-router.get('/:id', ownershipGuard('Folder', 'id'), async (req, res, next) => {
-  // TODO: TASK-017 -- implement; req.resource is the loaded Folder
-  next(new Error('Not implemented'));
+router.get('/:id', ownershipGuard('Folder', 'id'), async (req, res) => {
+  res.json({ folder: req.resource });
 });
 
 /**
  * PUT /api/folders/:id
  *
- * Renames a folder.
+ * Renames a folder. Ownership is verified by ownershipGuard which loads the
+ * folder into req.resource.
  *
  * Request body:
  *   { name: string }
  *
  * @returns {200} { folder: { id, name, updated_at } }
- * @returns {404} { error: "Not found" } -- folder does not exist or belongs to another user
+ * @returns {400} { error: "VALIDATION_ERROR" } -- name is missing, empty, or blank
+ * @returns {404} if folder does not exist or belongs to another user
  *
- * Postconditions:
- *   - folders.name updated
- *   - folders.updated_at refreshed
+ * @postcondition folders.name updated to trimmed value
+ * @postcondition folders.updated_at refreshed
  */
 router.put('/:id', ownershipGuard('Folder', 'id'), async (req, res, next) => {
-  // TODO: TASK-017 -- implement
-  next(new Error('Not implemented'));
+  try {
+    const rawName = req.body && req.body.name;
+    if (!rawName || !rawName.trim()) {
+      return res.status(400).json({ error: 'VALIDATION_ERROR' });
+    }
+
+    req.resource.name = rawName.trim();
+    await req.resource.save();
+
+    res.json({ folder: req.resource });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
  * DELETE /api/folders/:id
  *
- * Deletes a folder. Notes inside the folder have their folder_id set to NULL
- * (ON DELETE SET NULL at the database level, ADR-003).
+ * Deletes a folder. Ownership is verified by ownershipGuard which loads the
+ * folder into req.resource. Notes inside the folder automatically get
+ * folder_id = NULL via the database ON DELETE SET NULL constraint (ADR-003).
  *
  * @returns {204} (no body)
- * @returns {404} { error: "Not found" } -- folder does not exist or belongs to another user
+ * @returns {404} if folder does not exist or belongs to another user
  *
- * Postconditions:
- *   - Folder row deleted
- *   - All notes that were in this folder have folder_id set to NULL
+ * @postcondition Folder row deleted
+ * @postcondition All notes that were in this folder have folder_id = NULL (DB constraint)
  */
 router.delete('/:id', ownershipGuard('Folder', 'id'), async (req, res, next) => {
-  // TODO: TASK-017 -- implement
-  next(new Error('Not implemented'));
+  try {
+    await req.resource.destroy();
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

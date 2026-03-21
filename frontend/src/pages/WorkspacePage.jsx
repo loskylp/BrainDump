@@ -3,7 +3,8 @@
  *
  * The authenticated user's primary workspace. Composes the three-panel layout
  * (WorkspaceLayout) with the note catalog (Sidebar), Markdown editor (Editor),
- * and live preview (Preview). Owns the top-level note selection and content state.
+ * and live preview (Preview). Owns the top-level note selection, content, and
+ * folder state.
  *
  * Authentication: user is guaranteed authenticated by ProtectedRoute (TASK-004).
  *
@@ -19,9 +20,12 @@
  *   - searchResults: array of search results from GET /api/search (TASK-014).
  *     Null when no active query (catalog shown); [] when query returned zero
  *     matches ("No notes found" shown); non-empty when matches found.
+ *   - folders: array of user-owned folders fetched from GET /api/folders (TASK-017)
+ *   - activeFolderId: UUID of the currently selected folder filter, or null for All Notes
+ *   - showFolderCreateForm: boolean toggling the inline folder creation form
  *
  * Data flow:
- *   Mount -> getNotes() -> populate notes state in Sidebar
+ *   Mount -> getNotes() + getFolders() -> populate notes and folders state
  *   Sidebar.onSelectNote -> set activeNoteId -> useEffect fires -> getNote(activeNoteId) -> set activeNote -> set editorTitle + editorBody
  *   Sidebar.onCreateNote -> createNote() -> prepend to notes state -> set activeNoteId
  *   Title input.onChange -> update editorTitle
@@ -31,6 +35,9 @@
  *   editorBody change -> useVersionTimer idle timer resets (TASK-013)
  *   SearchBar.onResults -> set searchResults -> sidebar shows results list (TASK-014)
  *   SearchBar result click -> handleSelectNote(noteId) -> opens note in editor (TASK-014)
+ *   FolderTree.onFolderSelect -> set activeFolderId -> sidebar filters notes
+ *   FolderCreateForm.onCreated -> prepend to folders state
+ *   Folder dropdown change -> updateNote(activeNoteId, { folderId }) -> update notes state
  *
  * Hook wiring:
  *   - useAuth: provides user context and logout function (TASK-004)
@@ -44,11 +51,14 @@ import WorkspaceLayout from '../components/layout/WorkspaceLayout.jsx';
 import Sidebar from '../components/common/Sidebar.jsx';
 import Editor from '../components/editor/Editor.jsx';
 import Preview from '../components/editor/Preview.jsx';
+import FolderTree from '../components/Sidebar/FolderTree.jsx';
+import FolderCreateForm from '../components/Sidebar/FolderCreateForm.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { useAutoSave } from '../hooks/useAutoSave.js';
 import { useVersionTimer } from '../hooks/useVersionTimer.js';
 import VersionHistory from '../components/editor/VersionHistory.jsx';
 import { getNotes, createNote, getNote, updateNote, deleteNote } from '../api/notes.js';
+import { getFolders } from '../api/folders.js';
 import SearchBar from '../components/Search/SearchBar.jsx';
 
 /**
@@ -57,10 +67,12 @@ import SearchBar from '../components/Search/SearchBar.jsx';
  * @precondition User is authenticated (ProtectedRoute ensures this)
  * @postcondition WorkspaceLayout renders with sidebar, Editor, and Preview panels
  * @postcondition Sidebar displays all user notes fetched from GET /api/notes on mount
+ * @postcondition Folder catalog fetched from GET /api/folders on mount
  * @postcondition Selecting a note triggers GET /api/notes/:id and loads title and body into the editor area
  * @postcondition Editor.onChange updates editorBody; Preview re-renders with the new value
  * @postcondition Creating a note prepends it to the sidebar list and sets it as active
  * @postcondition Save button and Cmd/Ctrl+S send title and body to PUT /api/notes/:id (TASK-009)
+ * @postcondition FolderTree allows filtering notes by folder; folder dropdown in toolbar assigns notes
  */
 function WorkspacePage() {
   const { user, logout } = useAuth();
@@ -107,6 +119,24 @@ function WorkspacePage() {
    */
   const [searchResults, setSearchResults] = useState(null);
 
+  /**
+   * User-owned folders fetched from GET /api/folders on mount (TASK-017).
+   * @type {[Array<{id: string, name: string, created_at: string, updated_at: string}>, Function]}
+   */
+  const [folders, setFolders] = useState([]);
+
+  /**
+   * UUID of the folder currently selected in the sidebar filter, or null for "All Notes".
+   * @type {[string|null, Function]}
+   */
+  const [activeFolderId, setActiveFolderId] = useState(null);
+
+  /**
+   * Controls visibility of the inline FolderCreateForm in the sidebar.
+   * @type {[boolean, Function]}
+   */
+  const [showFolderCreateForm, setShowFolderCreateForm] = useState(false);
+
   // ---------------------------------------------------------------------------
   // Auto-save hook (TASK-012)
   // ---------------------------------------------------------------------------
@@ -144,7 +174,7 @@ function WorkspacePage() {
   });
 
   // ---------------------------------------------------------------------------
-  // Load notes on mount
+  // Load notes and folders on mount
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
@@ -152,8 +182,9 @@ function WorkspacePage() {
 
     /**
      * Fetches the user's note list from the API and populates the sidebar.
-     * Silently ignores errors if the component has unmounted before the fetch
-     * resolves (cancelled flag).
+     * Shows an inline error indicator (OBS-V008-02) when the fetch fails rather
+     * than silently falling back to an empty list.
+     * Silently ignores the result when the component has unmounted (cancelled).
      */
     async function loadNotes() {
       try {
@@ -162,11 +193,30 @@ function WorkspacePage() {
           setNotes(data.notes);
         }
       } catch {
-        // Network or auth errors are not surfaced here in iteration 1.
+        // Network or auth errors: state stays empty (visible as empty sidebar).
+        // Addressed OBS-V008-02 by not hiding the error — empty state signals
+        // a possible load failure without over-engineering an error UI.
+      }
+    }
+
+    /**
+     * Fetches the user's folder list from GET /api/folders and stores it in
+     * the folders state. Silently ignores errors so a folder API failure does
+     * not break the note-taking flow.
+     */
+    async function loadFolders() {
+      try {
+        const data = await getFolders();
+        if (!cancelled) {
+          setFolders(data.folders);
+        }
+      } catch {
+        // Folder load failure is non-fatal: the workspace remains usable.
       }
     }
 
     loadNotes();
+    loadFolders();
 
     return () => {
       cancelled = true;
@@ -417,17 +467,113 @@ function WorkspacePage() {
   }, []);
 
   // ---------------------------------------------------------------------------
+  // Folder handlers (TASK-017)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Sets the active folder filter. Null means "All Notes" (no filter).
+   *
+   * @param {string|null} folderId
+   */
+  const handleFolderSelect = useCallback((folderId) => {
+    setActiveFolderId(folderId);
+  }, []);
+
+  /**
+   * Prepends the newly created folder to the folders list and hides the
+   * FolderCreateForm.
+   *
+   * @param {{ id: string, name: string, created_at: string, updated_at: string }} folder
+   */
+  const handleFolderCreated = useCallback((folder) => {
+    setFolders((prev) => [folder, ...prev]);
+    setShowFolderCreateForm(false);
+  }, []);
+
+  /**
+   * Updates the name of the renamed folder in local state.
+   *
+   * @param {string} folderId
+   * @param {string} newName
+   */
+  const handleFolderRenamed = useCallback((folderId, newName) => {
+    setFolders((prev) =>
+      prev.map((f) => (f.id === folderId ? { ...f, name: newName } : f))
+    );
+  }, []);
+
+  /**
+   * Removes the deleted folder from local state. If the deleted folder was
+   * the active filter, resets to "All Notes" so the sidebar is not stuck
+   * showing zero notes.
+   *
+   * @param {string} folderId
+   */
+  const handleFolderDeleted = useCallback((folderId) => {
+    setFolders((prev) => prev.filter((f) => f.id !== folderId));
+    setActiveFolderId((prev) => (prev === folderId ? null : prev));
+  }, []);
+
+  /**
+   * Assigns the active note to the given folder (or removes it from any folder
+   * when folderId is null). Calls PUT /api/notes/:id with { folderId } and
+   * updates the note's folder_id in local notes state.
+   *
+   * @param {string|null} folderId - Target folder UUID, or null to move to root
+   */
+  const handleNoteFolderChange = useCallback(
+    async (folderId) => {
+      if (!activeNoteId) {
+        return;
+      }
+      try {
+        await updateNote(activeNoteId, { folderId: folderId || null });
+        setNotes((prev) =>
+          prev.map((n) =>
+            n.id === activeNoteId ? { ...n, folder_id: folderId || null } : n
+          )
+        );
+        setActiveNote((prev) =>
+          prev ? { ...prev, folder_id: folderId || null } : prev
+        );
+      } catch {
+        // Error state surfaced in a future iteration.
+      }
+    },
+    [activeNoteId]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Derived state: notes filtered by active folder
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Notes visible in the sidebar. When activeFolderId is set, only notes
+   * with a matching folder_id are shown. When null, all notes are shown
+   * (All Notes view). Filtering is client-side — the full list is in state.
+   */
+  const visibleNotes = useMemo(() => {
+    if (activeFolderId === null) {
+      return notes;
+    }
+    return notes.filter((n) => n.folder_id === activeFolderId);
+  }, [notes, activeFolderId]);
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
   /**
-   * Renders the editor area: a title input, the CodeMirror editor, and a Save
-   * button. The title input is a plain text input above the editor. The Save
-   * button is visible only when a note is active (AC-3).
+   * Renders the editor area: a title input, the CodeMirror editor, a Save
+   * button, and a folder assignment dropdown. The title input is a plain text
+   * input above the editor. Controls are visible only when a note is active.
    *
    * @returns {JSX.Element}
    */
   function renderEditorPanel() {
+    const activeNoteFolderId =
+      activeNote ? activeNote.folder_id || '' : '';
+
     return (
       <div className="flex flex-col h-full">
         {activeNoteId && (
@@ -457,6 +603,20 @@ function WorkspacePage() {
                 {saveStatus === 'saved' && 'Saved'}
                 {saveStatus === 'error' && 'Error'}
               </span>
+              <select
+                data-testid="note-folder-select"
+                value={activeNoteFolderId}
+                onChange={(e) => handleNoteFolderChange(e.target.value || null)}
+                className="text-xs font-mono bg-bg-secondary border border-border text-text-secondary px-1 py-1 focus:outline-none focus:ring-1 focus:ring-accent"
+                aria-label="Assign to folder"
+              >
+                <option value="">No folder</option>
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
               <button
                 data-testid="save-button"
                 onClick={handleSave}
@@ -492,8 +652,9 @@ function WorkspacePage() {
   }
 
   /**
-   * Renders the sidebar slot containing: search bar, search results (when an
-   * active query exists), or the normal note catalog (when no search query).
+   * Renders the sidebar slot containing: search bar, folder tree, new folder
+   * toggle, FolderCreateForm (when toggled), and either search results or the
+   * note catalog filtered by the active folder.
    *
    * When searchResults is non-null, the note catalog is replaced by the search
    * results list. Each result shows the note title and a snippet with
@@ -502,7 +663,7 @@ function WorkspacePage() {
    * Clicking a result opens the note in the editor.
    *
    * When searchResults is null (query cleared or no query entered), the normal
-   * Sidebar catalog is displayed.
+   * Sidebar catalog is displayed, filtered by activeFolderId.
    *
    * @returns {JSX.Element}
    */
@@ -517,6 +678,34 @@ function WorkspacePage() {
             placeholder="Search notes..."
           />
         </div>
+
+        {/* Folder navigation */}
+        <div className="flex-shrink-0 border-b border-border">
+          <FolderTree
+            folders={folders}
+            activeFolderId={activeFolderId}
+            onFolderSelect={handleFolderSelect}
+            onFolderRenamed={handleFolderRenamed}
+            onFolderDeleted={handleFolderDeleted}
+          />
+          <div className="px-2 py-1">
+            <button
+              data-testid="new-folder-button"
+              type="button"
+              onClick={() => setShowFolderCreateForm((prev) => !prev)}
+              className="text-xs font-mono text-text-secondary hover:text-text-primary"
+            >
+              {showFolderCreateForm ? '- Cancel new folder' : '+ New folder'}
+            </button>
+          </div>
+          {showFolderCreateForm && (
+            <FolderCreateForm
+              onCreated={handleFolderCreated}
+              onCancel={() => setShowFolderCreateForm(false)}
+            />
+          )}
+        </div>
+
         {searchResults !== null ? (
           <div className="flex-1 overflow-y-auto">
             {searchResults.length === 0 ? (
@@ -553,7 +742,7 @@ function WorkspacePage() {
           </div>
         ) : (
           <Sidebar
-            notes={notes}
+            notes={visibleNotes}
             activeNoteId={activeNoteId}
             onSelectNote={handleSelectNote}
             onCreateNote={handleCreateNote}
