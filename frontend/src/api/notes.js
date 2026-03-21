@@ -65,6 +65,5 @@ export async function updateNote(noteId, updates) {
  * @throws {ApiError} 404 if note not found or not owned by authenticated user
  */
 export async function deleteNote(noteId) {
-  // TODO: TASK-010 -- implement: del(`/api/notes/${noteId}`)
-  throw new Error('Not implemented');
+  return del(`/api/notes/${noteId}`);
 }

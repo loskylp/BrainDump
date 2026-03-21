@@ -40,7 +40,7 @@ import Sidebar from '../components/common/Sidebar.jsx';
 import Editor from '../components/editor/Editor.jsx';
 import Preview from '../components/editor/Preview.jsx';
 import { useAuth } from '../hooks/useAuth.js';
-import { getNotes, createNote, getNote, updateNote } from '../api/notes.js';
+import { getNotes, createNote, getNote, updateNote, deleteNote } from '../api/notes.js';
 
 /**
  * @returns {JSX.Element}
@@ -276,6 +276,43 @@ function WorkspacePage() {
     }
   }
 
+  /**
+   * Deletes the currently active note after user confirmation (AC-2, AC-5).
+   *
+   * Presents a browser-native confirm() dialog to prevent accidental deletion.
+   * If confirmed: calls DELETE /api/notes/:id, removes the note from the sidebar
+   * list, and clears the editor (AC-4). If cancelled: no action taken (AC-5).
+   *
+   * @precondition activeNoteId is not null
+   * @postcondition On confirm: note removed from sidebar, editor cleared, API called
+   * @postcondition On cancel: no state change, no API call
+   */
+  const handleDeleteNote = useCallback(async () => {
+    if (!activeNoteId) {
+      return;
+    }
+
+    const noteTitle = editorTitle || 'Untitled';
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${noteTitle}"? This will permanently remove the note and all its version history.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteNote(activeNoteId);
+      setNotes((prev) => prev.filter((n) => n.id !== activeNoteId));
+      setActiveNoteId(null);
+      setActiveNote(null);
+      setEditorTitle('');
+      setEditorBody('');
+    } catch {
+      // Error state surfaced in a future iteration.
+    }
+  }, [activeNoteId, editorTitle]);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -307,6 +344,13 @@ function WorkspacePage() {
                 className="px-3 py-1 text-xs font-mono text-text-primary bg-bg-secondary border border-border hover:bg-border transition-colors"
               >
                 Save
+              </button>
+              <button
+                data-testid="delete-note-button"
+                onClick={handleDeleteNote}
+                className="px-3 py-1 text-xs font-mono text-red-400 bg-bg-secondary border border-border hover:bg-red-900 hover:text-red-200 transition-colors"
+              >
+                Delete
               </button>
             </div>
           </>

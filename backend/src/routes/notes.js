@@ -126,8 +126,15 @@ router.put('/:id', ownershipGuard('Note', 'id'), async (req, res, next) => {
  *   - All associated NoteVersion rows deleted (DB CASCADE)
  */
 router.delete('/:id', ownershipGuard('Note', 'id'), async (req, res, next) => {
-  // TODO: TASK-010 -- implement
-  next(new Error('Not implemented'));
+  try {
+    await noteService.deleteNote(req.params.id, req.session.userId);
+    res.status(204).send();
+  } catch (err) {
+    if (err.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    next(err);
+  }
 });
 
 module.exports = router;

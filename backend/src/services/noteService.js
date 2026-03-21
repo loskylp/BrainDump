@@ -196,8 +196,23 @@ async function updateNote(noteId, userId, updates) {
  * @postcondition Search index (search_vector) for this note is removed
  */
 async function deleteNote(noteId, userId) {
-  // TODO: TASK-010 -- implement
-  throw new Error('Not implemented');
+  return sequelize.transaction(async (transaction) => {
+    await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+      replacements: { userId },
+      transaction,
+    });
+
+    const note = await Note.scope({ method: ['forUser', userId] }).findOne({
+      where: { id: noteId },
+      transaction,
+    });
+
+    if (!note) {
+      throw new Error('NOT_FOUND');
+    }
+
+    await note.destroy({ transaction });
+  });
 }
 
 module.exports = { createNote, getNotes, getNote, updateNote, deleteNote };
