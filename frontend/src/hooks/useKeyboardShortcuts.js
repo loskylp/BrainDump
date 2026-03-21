@@ -10,6 +10,12 @@
  *                   Fires even when the event target is an INPUT or TEXTAREA.
  *   Ctrl/Cmd + N  — Create a new note (calls onNewNote).
  *                   Fires even when the event target is an INPUT or TEXTAREA.
+ *   Ctrl/Cmd + B  — Bold toggle in the editor (calls onBold).
+ *                   Fires even when the event target is an INPUT, TEXTAREA, or
+ *                   contenteditable element (intended for use inside the editor).
+ *   Ctrl/Cmd + I  — Italic toggle in the editor (calls onItalic).
+ *                   Fires even when the event target is an INPUT, TEXTAREA, or
+ *                   contenteditable element (intended for use inside the editor).
  *   Ctrl/Cmd + K  — Focus the search input (calls onFocusSearch).
  *                   Suppressed when the event target is an INPUT, TEXTAREA, or
  *                   contenteditable element.
@@ -23,6 +29,10 @@
  *     browser's native "Save Page" dialog.
  *   - Ctrl/Cmd+N is intercepted (event.preventDefault()) to suppress the
  *     browser's "New Window" shortcut.
+ *   - Ctrl/Cmd+B is intercepted (event.preventDefault()) to suppress the
+ *     browser's bookmark-page shortcut in favour of the in-editor bold toggle.
+ *   - Ctrl/Cmd+I is intercepted (event.preventDefault()) to suppress any
+ *     browser default in favour of the in-editor italic toggle.
  *   - Ctrl/Cmd+K is intercepted (event.preventDefault()) to suppress the
  *     browser's address-bar-focus behaviour (VS Code, Notion, Slack pattern).
  *   - Ctrl/Cmd+W, Ctrl/Cmd+T, Ctrl/Cmd+L, Ctrl/Cmd+R, Ctrl/Cmd+Tab are
@@ -32,6 +42,10 @@
  *   omitted the shortcut is registered but does nothing.
  * @param {function} [handlers.onSave] - Called when Ctrl/Cmd+S is pressed.
  * @param {function} [handlers.onNewNote] - Called when Ctrl/Cmd+N is pressed.
+ * @param {function} [handlers.onBold] - Called when Ctrl/Cmd+B is pressed.
+ *   Fires even when focus is inside a text input or contenteditable element.
+ * @param {function} [handlers.onItalic] - Called when Ctrl/Cmd+I is pressed.
+ *   Fires even when focus is inside a text input or contenteditable element.
  * @param {function} [handlers.onFocusSearch] - Called when Ctrl/Cmd+K is pressed
  *   and focus is not inside a text input.
  * @param {function} [handlers.onToggleShortcutRef] - Called when '?' is pressed
@@ -86,6 +100,8 @@ function isTypingContext(e) {
  * @param {object} handlers
  * @param {function} [handlers.onSave]
  * @param {function} [handlers.onNewNote]
+ * @param {function} [handlers.onBold]
+ * @param {function} [handlers.onItalic]
  * @param {function} [handlers.onFocusSearch]
  * @param {function} [handlers.onToggleShortcutRef]
  * @param {function} [handlers.onEscape]
@@ -93,6 +109,8 @@ function isTypingContext(e) {
 export function useKeyboardShortcuts({
   onSave,
   onNewNote,
+  onBold,
+  onItalic,
   onFocusSearch,
   onToggleShortcutRef,
   onEscape,
@@ -101,10 +119,11 @@ export function useKeyboardShortcuts({
     /**
      * Dispatches keyboard events to the correct shortcut callback.
      *
-     * The modifier key shortcuts (Cmd/Ctrl+S and Cmd/Ctrl+N) intentionally
-     * bypass the typing-context guard so they work even inside the editor
-     * text fields. All other shortcuts are suppressed when focus is inside a
-     * text input or contenteditable element.
+     * The modifier key shortcuts (Cmd/Ctrl+S, Cmd/Ctrl+N, Cmd/Ctrl+B, and
+     * Cmd/Ctrl+I) intentionally bypass the typing-context guard so they work
+     * even inside the editor text fields or contenteditable elements. All
+     * other shortcuts are suppressed when focus is inside a text input or
+     * contenteditable element.
      *
      * @param {KeyboardEvent} e
      */
@@ -126,6 +145,24 @@ export function useKeyboardShortcuts({
         e.preventDefault();
         if (onNewNote) {
           onNewNote();
+        }
+        return;
+      }
+
+      // Cmd/Ctrl+B — bold toggle (fires even in text fields and editor)
+      if (isMeta && e.key === 'b') {
+        e.preventDefault();
+        if (onBold) {
+          onBold();
+        }
+        return;
+      }
+
+      // Cmd/Ctrl+I — italic toggle (fires even in text fields and editor)
+      if (isMeta && e.key === 'i') {
+        e.preventDefault();
+        if (onItalic) {
+          onItalic();
         }
         return;
       }
@@ -165,5 +202,5 @@ export function useKeyboardShortcuts({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape]);
+  }, [onSave, onNewNote, onBold, onItalic, onFocusSearch, onToggleShortcutRef, onEscape]);
 }

@@ -3,7 +3,8 @@
  *
  * A keyboard shortcut reference overlay shown when the user presses '?' while
  * focus is not inside a text input, or via the '?' help button in the workspace
- * header (TASK-025, REQ-018 AC 8).
+ * header (TASK-025, REQ-018 AC 8). Displays all registered shortcuts including
+ * Cmd/Ctrl+B (bold) and Cmd/Ctrl+I (italic) added in TASK-025 AC-4, AC-5.
  *
  * The overlay is informational only — no actions are triggered from within
  * this component. Dismissal is handled by:
@@ -40,6 +41,8 @@ import { useEffect, useRef } from 'react';
 const SHORTCUT_ENTRIES = [
   { keys: 'Cmd/Ctrl + S', description: 'Save note' },
   { keys: 'Cmd/Ctrl + N', description: 'New note' },
+  { keys: 'Cmd/Ctrl + B', description: 'Bold selected text' },
+  { keys: 'Cmd/Ctrl + I', description: 'Italic selected text' },
   { keys: 'Cmd/Ctrl + K', description: 'Focus search' },
   { keys: '?',            description: 'Show/hide shortcuts' },
   { keys: 'Esc',          description: 'Close panel / close sidebar' },

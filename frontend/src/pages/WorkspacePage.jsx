@@ -50,7 +50,7 @@
  *   - useKeyboardShortcuts: global keyboard shortcuts (TASK-025)
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.jsx';
 import HamburgerToggle from '../components/common/HamburgerToggle.jsx';
@@ -177,6 +177,18 @@ function WorkspacePage() {
    * @type {[boolean, Function]}
    */
   const [showShortcutRef, setShowShortcutRef] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Editor imperative handle ref (TASK-025 AC-4, AC-5)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Ref forwarded to the Editor component. Provides access to the
+   * boldSelection() and italicSelection() imperative methods which dispatch
+   * CodeMirror 6 transactions to wrap the current selection.
+   * @type {React.RefObject<{boldSelection: function, italicSelection: function}>}
+   */
+  const editorRef = useRef(null);
 
   // ---------------------------------------------------------------------------
   // Auto-save hook (TASK-012)
@@ -558,9 +570,27 @@ function WorkspacePage() {
     }
   }, [showShortcutRef, sidebarOpen]);
 
+  /**
+   * Cmd/Ctrl+B shortcut handler — delegates to the Editor's boldSelection()
+   * imperative method. No-op when the editor ref has not mounted.
+   */
+  const handleShortcutBold = useCallback(() => {
+    editorRef.current?.boldSelection();
+  }, []);
+
+  /**
+   * Cmd/Ctrl+I shortcut handler — delegates to the Editor's italicSelection()
+   * imperative method. No-op when the editor ref has not mounted.
+   */
+  const handleShortcutItalic = useCallback(() => {
+    editorRef.current?.italicSelection();
+  }, []);
+
   useKeyboardShortcuts({
     onSave: handleShortcutSave,
     onNewNote: handleCreateNote,
+    onBold: handleShortcutBold,
+    onItalic: handleShortcutItalic,
     onFocusSearch: handleShortcutFocusSearch,
     onToggleShortcutRef: handleShortcutToggleRef,
     onEscape: handleShortcutEscape,
@@ -755,6 +785,7 @@ function WorkspacePage() {
         )}
         <div className="flex-1 overflow-hidden border-r border-border">
           <Editor
+            ref={editorRef}
             value={editorBody}
             onChange={handleEditorChange}
           />

@@ -69,7 +69,7 @@ function fakeContentEditable() {
 // ---------------------------------------------------------------------------
 
 describe('useKeyboardShortcuts', () => {
-  let onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape;
+  let onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic;
 
   beforeEach(() => {
     onSave = vi.fn();
@@ -77,6 +77,8 @@ describe('useKeyboardShortcuts', () => {
     onFocusSearch = vi.fn();
     onToggleShortcutRef = vi.fn();
     onEscape = vi.fn();
+    onBold = vi.fn();
+    onItalic = vi.fn();
   });
 
   afterEach(() => {
@@ -225,6 +227,106 @@ describe('useKeyboardShortcuts', () => {
     );
     fireKeydown({ key: '?', target: fakeContentEditable() });
     expect(onToggleShortcutRef).not.toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------------
+  // Cmd/Ctrl+B — bold
+  // -------------------------------------------------------------------------
+
+  it('calls onBold when Cmd+B is pressed', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'b', metaKey: true });
+    expect(onBold).toHaveBeenCalledOnce();
+  });
+
+  it('calls onBold when Ctrl+B is pressed', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'b', ctrlKey: true });
+    expect(onBold).toHaveBeenCalledOnce();
+  });
+
+  it('calls onBold even when target is INPUT (editor context)', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'b', metaKey: true, target: fakeTarget('INPUT') });
+    expect(onBold).toHaveBeenCalledOnce();
+  });
+
+  it('calls onBold even when target is contenteditable (editor context)', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'b', metaKey: true, target: fakeContentEditable() });
+    expect(onBold).toHaveBeenCalledOnce();
+  });
+
+  it('does NOT call onBold when B is pressed without a modifier key', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'b' });
+    expect(onBold).not.toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------------
+  // Cmd/Ctrl+I — italic
+  // -------------------------------------------------------------------------
+
+  it('calls onItalic when Cmd+I is pressed', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'i', metaKey: true });
+    expect(onItalic).toHaveBeenCalledOnce();
+  });
+
+  it('calls onItalic when Ctrl+I is pressed', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'i', ctrlKey: true });
+    expect(onItalic).toHaveBeenCalledOnce();
+  });
+
+  it('calls onItalic even when target is INPUT (editor context)', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'i', metaKey: true, target: fakeTarget('INPUT') });
+    expect(onItalic).toHaveBeenCalledOnce();
+  });
+
+  it('calls onItalic even when target is contenteditable (editor context)', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'i', metaKey: true, target: fakeContentEditable() });
+    expect(onItalic).toHaveBeenCalledOnce();
+  });
+
+  it('does NOT call onItalic when I is pressed without a modifier key', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'i' });
+    expect(onItalic).not.toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------------
+  // Escape still fires even with new shortcuts registered
+  // -------------------------------------------------------------------------
+
+  it('calls onEscape when Escape is pressed (with onBold and onItalic registered)', () => {
+    renderHook(() =>
+      useKeyboardShortcuts({ onSave, onNewNote, onFocusSearch, onToggleShortcutRef, onEscape, onBold, onItalic })
+    );
+    fireKeydown({ key: 'Escape' });
+    expect(onEscape).toHaveBeenCalledOnce();
   });
 
   // -------------------------------------------------------------------------
