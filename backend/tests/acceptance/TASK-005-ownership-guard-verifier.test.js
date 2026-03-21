@@ -203,10 +203,10 @@ describe('AC-2 [REQ-011]: ownership guard allows the resource owner through', ()
     expect(res.status).toBe(200);
   });
 
-  it('GET /api/folders/:id — guard passes for the owning user (reaches stub handler, returns 500 not 404)', async () => {
+  it('GET /api/folders/:id — guard passes for the owning user, returns 200 with folder data', async () => {
     // Given: a user with a session owns a folder
     // When: that user requests the folder by ID
-    // Then: ownershipGuard passes; stub handler produces 500
+    // Then: ownershipGuard passes; handler returns 200 with the folder data
     const user = await registerAndLogin({ username: 'owner', email: 'owner@example.com' });
     const folder = await createFolderDirectly(user.userId);
 
@@ -216,7 +216,7 @@ describe('AC-2 [REQ-011]: ownership guard allows the resource owner through', ()
 
     expect(res.status).not.toBe(404);
     expect(res.status).not.toBe(401);
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(200);
   });
 });
 
