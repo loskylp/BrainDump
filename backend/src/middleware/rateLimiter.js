@@ -50,6 +50,9 @@ const rateLimit = require('express-rate-limit');
  *               load balancer's IP
  * @postcondition Requests beyond the ceiling within the window receive 429
  * @postcondition Requests within the ceiling pass through to the next middleware
+ * @postcondition When NODE_ENV === 'test', all requests are passed through
+ *               without counting (skip returns true), preventing cross-test
+ *               interference in the acceptance and migration test suites
  */
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -58,6 +61,22 @@ const authRateLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later' },
   keyGenerator: (req) => req.ip,
+  /**
+   * Skip rate limiting entirely in test environments.
+   *
+   * Acceptance tests and the migration-test CI job make more than 10
+   * POST /api/auth/register calls within the 15-minute window (multiple
+   * test suites run sequentially against the same in-memory store). Without
+   * this bypass, the shared limiter instance trips the ceiling mid-suite and
+   * causes registration helpers to receive 429 instead of 201.
+   *
+   * Unit tests for rate-limit behaviour (rateLimiter.test.js) construct their
+   * own fresh rateLimit() instances directly from express-rate-limit, so this
+   * bypass does not affect coverage of the rate-limit logic itself.
+   *
+   * @returns {boolean} true when NODE_ENV is 'test', bypassing the limiter
+   */
+  skip: () => process.env.NODE_ENV === 'test',
 });
 
 module.exports = { authRateLimiter };
