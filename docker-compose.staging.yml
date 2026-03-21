@@ -1,31 +1,32 @@
 # docker-compose.staging.yml
 #
-# Deployed on the nxlabs.cc server under /opt/braindump/
-# See: https://github.com/loskylp/nxlabs.cc-infra/blob/main/INTEGRATION.md
+# Staging environment for BrainDump on nxlabs.cc.
+# Location on server: /opt/braindump/docker-compose.staging.yml
+# Per ADR-007: https://github.com/loskylp/BrainDump/blob/main/process/architect/adr/ADR-007-deployment-model.md
 #
 # First-time setup:
-#   1. ssh deploy@nxlabs.cc /opt/postgres/provision.sh braindump
-#   2. Create /opt/braindump/.env with the credentials printed by step 1 (see below)
+#   1. ssh deploy@nxlabs.cc /opt/postgres/provision.sh braindump-staging
+#   2. Create /opt/braindump/.env.staging with the credentials from step 1 (see .env.example for variable names)
 #   3. docker compose -f docker-compose.staging.yml pull
 #   4. docker compose -f docker-compose.staging.yml up -d
 #
 # Subsequent deploys are handled automatically by Watchtower (polls every 5 min).
+# CI pushes ghcr.io/loskylp/braindump:staging on every green build to main.
 #
-# Required .env variables on the server:
-#   POSTGRES_URL=postgresql://braindump:<password>@postgres:5432/braindump
-#   SESSION_SECRET=<long random string>
-#   NODE_ENV=production
+# Required .env.staging variables on the server:
+#   POSTGRES_URL=postgresql://braindump_staging:<password>@postgres:5432/braindump_staging
+#   SESSION_SECRET=<long random string, different from production>
+#   NODE_ENV=staging
+#   APP_URL=https://braindump.staging.nxlabs.cc
 #   EMAIL_PROVIDER=console
+#   EMAIL_FROM=noreply@staging.nxlabs.cc
 
 services:
-  braindump:
+  braindump-staging:
     image: ghcr.io/loskylp/braindump:staging
     restart: unless-stopped
     env_file:
-      - .env
-    environment:
-      NODE_ENV: production
-      EMAIL_PROVIDER: console
+      - .env.staging
     labels:
       # Traefik routing
       - "traefik.enable=true"
@@ -33,9 +34,9 @@ services:
       - "traefik.http.routers.braindump-staging.tls.certresolver=letsencrypt"
       - "traefik.http.routers.braindump-staging.entrypoints=websecure"
       - "traefik.http.services.braindump-staging.loadbalancer.server.port=3000"
-      # Watchtower auto-update
+      # Watchtower auto-update (picks up new :staging tags)
       - "com.centurylinklabs.watchtower.enable=true"
-      # Uptime Kuma monitoring (AutoKuma)
+      # Uptime Kuma monitoring via AutoKuma (auto-registers health check)
       - "kuma.braindump-staging.http.name=BrainDump Staging"
       - "kuma.braindump-staging.http.url=https://braindump.staging.nxlabs.cc/api/health"
     networks:

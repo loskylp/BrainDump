@@ -183,7 +183,9 @@ jobs:
           POSTGRES_URL: postgresql://braindump_migrate:braindump_migrate@localhost:5432/braindump_migrate
 
       - name: Run full test suite after migrations
-        run: npm test
+        # --runInBand: run serially to avoid intermittent timeouts from parallel
+        # Jest workers sharing a single PostgreSQL session store (OBS-V004-05).
+        run: npx jest --forceExit --runInBand
         working-directory: backend
         env:
           NODE_ENV: test
