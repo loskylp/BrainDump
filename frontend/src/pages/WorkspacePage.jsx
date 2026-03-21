@@ -25,6 +25,7 @@
  *   - showFolderCreateForm: boolean toggling the inline folder creation form
  *   - sidebarOpen: boolean controlling sidebar overlay visibility on sub-desktop (TASK-018)
  *   - activePanel: 'sidebar'|'editor'|'preview' — which panel is visible on mobile (TASK-018)
+ *   - showShortcutRef: boolean controlling the keyboard shortcut reference overlay (TASK-025)
  *
  * Data flow:
  *   Mount -> getNotes() + getFolders() -> populate notes and folders state
@@ -40,17 +41,20 @@
  *   FolderTree.onFolderSelect -> set activeFolderId -> sidebar filters notes
  *   FolderCreateForm.onCreated -> prepend to folders state
  *   Folder dropdown change -> updateNote(activeNoteId, { folderId }) -> update notes state
+ *   ? key or '?' button -> toggle showShortcutRef (TASK-025)
  *
  * Hook wiring:
  *   - useAuth: provides user context and logout function (TASK-004)
  *   - useAutoSave: wired to editorBody and activeNoteId (TASK-012)
  *   - useVersionTimer: wired to editorBody and activeNoteId (TASK-013)
+ *   - useKeyboardShortcuts: global keyboard shortcuts (TASK-025)
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.jsx';
 import HamburgerToggle from '../components/common/HamburgerToggle.jsx';
+import ShortcutReference from '../components/common/ShortcutReference.jsx';
 import Sidebar from '../components/common/Sidebar.jsx';
 import Editor from '../components/editor/Editor.jsx';
 import Preview from '../components/editor/Preview.jsx';
@@ -59,6 +63,7 @@ import FolderCreateForm from '../components/Sidebar/FolderCreateForm.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { useAutoSave } from '../hooks/useAutoSave.js';
 import { useVersionTimer } from '../hooks/useVersionTimer.js';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.js';
 import VersionHistory from '../components/editor/VersionHistory.jsx';
 import { getNotes, createNote, getNote, updateNote, deleteNote } from '../api/notes.js';
 import { getFolders } from '../api/folders.js';
@@ -78,6 +83,8 @@ import SearchBar from '../components/Search/SearchBar.jsx';
  * @postcondition FolderTree allows filtering notes by folder; folder dropdown in toolbar assigns notes
  * @postcondition HamburgerToggle (lg:hidden) allows opening the sidebar overlay on sub-desktop
  * @postcondition WorkspaceLayout receives sidebarOpen, onSidebarClose, activePanel, onPanelChange
+ * @postcondition useKeyboardShortcuts wires global shortcuts (TASK-025)
+ * @postcondition ShortcutReference overlay is rendered when showShortcutRef is true (TASK-025)
  */
 function WorkspacePage() {
   const { user, logout } = useAuth();
@@ -159,6 +166,17 @@ function WorkspacePage() {
    * @type {[string, Function]}
    */
   const [activePanel, setActivePanel] = useState('editor');
+
+  // ---------------------------------------------------------------------------
+  // Keyboard shortcut reference overlay state (TASK-025)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Controls visibility of the keyboard shortcut reference overlay (TASK-025).
+   * Toggled by the '?' key (when not in a text field) or the '?' header button.
+   * @type {[boolean, Function]}
+   */
+  const [showShortcutRef, setShowShortcutRef] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Auto-save hook (TASK-012)
@@ -293,33 +311,8 @@ function WorkspacePage() {
     };
   }, [activeNoteId]);
 
-  // ---------------------------------------------------------------------------
-  // Keyboard shortcut: Cmd+S / Ctrl+S triggers save (AC-3)
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    /**
-     * Handles the global keydown event to intercept Cmd+S (macOS) and
-     * Ctrl+S (Windows/Linux). When a note is active, calls handleSave.
-     * Prevents the browser's default "Save page" dialog.
-     *
-     * @param {KeyboardEvent} e
-     */
-    function handleKeyDown(e) {
-      if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        if (activeNoteId) {
-          handleSave();
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeNoteId, editorTitle, editorBody]);
+  // (Cmd/Ctrl+S was previously a standalone useEffect here — now handled by
+  // useKeyboardShortcuts below, preventing double-registration.)
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -513,28 +506,65 @@ function WorkspacePage() {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Keyboard shortcut: Escape closes the sidebar overlay (TASK-018)
-  // Placed after responsive handlers so handleSidebarClose is defined.
+  // Global keyboard shortcuts (TASK-025, REQ-018)
+  // Wired here — after all handler functions are defined — so every callback
+  // reference is stable and the dependency array is correct.
+  // Replaces the former standalone Cmd+S and Escape useEffect blocks.
   // ---------------------------------------------------------------------------
 
-  useEffect(() => {
-    /**
-     * Closes the sidebar overlay when the Escape key is pressed on tablet.
-     * No-op on desktop where the sidebar is in normal grid flow.
-     *
-     * @param {KeyboardEvent} e
-     */
-    function handleEscape(e) {
-      if (e.key === 'Escape' && sidebarOpen) {
-        handleSidebarClose();
-      }
+  /**
+   * Cmd/Ctrl+S shortcut handler — saves the currently active note.
+   * No-op when no note is open. handleSave reads editorTitle/editorBody from
+   * the enclosing closure, so they are in the dependency array.
+   */
+  const handleShortcutSave = useCallback(() => {
+    if (activeNoteId) {
+      handleSave();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNoteId, editorTitle, editorBody]);
 
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [sidebarOpen, handleSidebarClose]);
+  /**
+   * Cmd/Ctrl+K shortcut handler — focuses the search bar input field.
+   *
+   * Uses a DOM query against the known aria-label on the SearchBar input
+   * rather than a forwarded ref, so this handler does not require a ref
+   * prop on the SearchBar component (which would break existing test mocks
+   * that do not use forwardRef).
+   */
+  const handleShortcutFocusSearch = useCallback(() => {
+    const searchInput = document.querySelector('[aria-label="Search notes"]');
+    if (searchInput) {
+      searchInput.focus();
+    }
+  }, []);
+
+  /**
+   * ? shortcut handler — toggles the keyboard shortcut reference overlay.
+   */
+  const handleShortcutToggleRef = useCallback(() => {
+    setShowShortcutRef((prev) => !prev);
+  }, []);
+
+  /**
+   * Escape shortcut handler — closes the shortcut reference overlay if it is
+   * open; otherwise closes the sidebar overlay on sub-desktop viewports.
+   */
+  const handleShortcutEscape = useCallback(() => {
+    if (showShortcutRef) {
+      setShowShortcutRef(false);
+    } else if (sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  }, [showShortcutRef, sidebarOpen]);
+
+  useKeyboardShortcuts({
+    onSave: handleShortcutSave,
+    onNewNote: handleCreateNote,
+    onFocusSearch: handleShortcutFocusSearch,
+    onToggleShortcutRef: handleShortcutToggleRef,
+    onEscape: handleShortcutEscape,
+  });
 
   /**
    * Handles restoration from the VersionHistory panel (TASK-013 AC-8).
@@ -846,6 +876,26 @@ function WorkspacePage() {
           onToggle={handleSidebarToggle}
         />
       </div>
+
+      {/* '?' help button — positioned in the top-right corner for discoverability (TASK-025) */}
+      <div className="absolute top-2 right-2 z-50">
+        <button
+          data-testid="shortcut-ref-button"
+          type="button"
+          aria-label="Show keyboard shortcuts"
+          onClick={() => setShowShortcutRef((prev) => !prev)}
+          className="text-xs font-mono text-text-secondary hover:text-text-primary px-2 py-1 border border-border bg-bg-secondary transition-colors"
+        >
+          ?
+        </button>
+      </div>
+
+      {/* Keyboard shortcut reference overlay — rendered as a fixed overlay outside the grid (TASK-025) */}
+      <ShortcutReference
+        isOpen={showShortcutRef}
+        onClose={() => setShowShortcutRef(false)}
+      />
+
       <WorkspaceLayout
         sidebar={renderSidebar()}
         editor={renderEditorPanel()}
