@@ -16,6 +16,10 @@
  *   Ctrl/Cmd + I  — Italic toggle in the editor (calls onItalic).
  *                   Fires even when the event target is an INPUT, TEXTAREA, or
  *                   contenteditable element (intended for use inside the editor).
+ *   Ctrl/Cmd + Shift + R — Toggle reading mode (calls onReadingMode, TASK-030).
+ *                   Fires even when the event target is an INPUT or TEXTAREA.
+ *                   Requires Shift to distinguish from Cmd+R (browser reload),
+ *                   which is deliberately not intercepted.
  *   Ctrl/Cmd + K  — Focus the search input (calls onFocusSearch).
  *                   Suppressed when the event target is an INPUT, TEXTAREA, or
  *                   contenteditable element.
@@ -35,8 +39,10 @@
  *     browser default in favour of the in-editor italic toggle.
  *   - Ctrl/Cmd+K is intercepted (event.preventDefault()) to suppress the
  *     browser's address-bar-focus behaviour (VS Code, Notion, Slack pattern).
- *   - Ctrl/Cmd+W, Ctrl/Cmd+T, Ctrl/Cmd+L, Ctrl/Cmd+R, Ctrl/Cmd+Tab are
- *     never handled by this hook — browser defaults are preserved.
+ *   - Ctrl/Cmd+W, Ctrl/Cmd+T, Ctrl/Cmd+L, Ctrl/Cmd+R (without Shift),
+ *     Ctrl/Cmd+Tab are never handled by this hook — browser defaults are
+ *     preserved. Ctrl/Cmd+Shift+R is handled (reading mode) and does not
+ *     trigger a reload because the Shift modifier prevents browser interception.
  *
  * @param {object} handlers - Callback map. All callbacks are optional; if
  *   omitted the shortcut is registered but does nothing.
@@ -51,6 +57,9 @@
  * @param {function} [handlers.onToggleShortcutRef] - Called when '?' is pressed
  *   and focus is not inside a text input.
  * @param {function} [handlers.onEscape] - Called when Escape is pressed.
+ * @param {function} [handlers.onReadingMode] - Called when Ctrl/Cmd+Shift+R is
+ *   pressed. Fires even when focus is inside a text input or contenteditable
+ *   element (consistent with onSave and onNewNote). TASK-030, REQ-022.
  *
  * @returns {void} This hook registers side effects; it has no return value.
  *
@@ -105,6 +114,7 @@ function isTypingContext(e) {
  * @param {function} [handlers.onFocusSearch]
  * @param {function} [handlers.onToggleShortcutRef]
  * @param {function} [handlers.onEscape]
+ * @param {function} [handlers.onReadingMode]
  */
 export function useKeyboardShortcuts({
   onSave,
@@ -114,6 +124,7 @@ export function useKeyboardShortcuts({
   onFocusSearch,
   onToggleShortcutRef,
   onEscape,
+  onReadingMode,
 } = {}) {
   useEffect(() => {
     /**
@@ -167,6 +178,18 @@ export function useKeyboardShortcuts({
         return;
       }
 
+      // Cmd/Ctrl+Shift+R — toggle reading mode (TASK-030, REQ-022).
+      // Fires even when focus is inside a text field.
+      // Shift is required to distinguish from Cmd+R (browser reload), which
+      // is deliberately not intercepted by this hook.
+      if (isMeta && e.shiftKey && e.key === 'r') {
+        e.preventDefault();
+        if (onReadingMode) {
+          onReadingMode();
+        }
+        return;
+      }
+
       // The remaining shortcuts are suppressed while the user is typing.
       if (typing) {
         return;
@@ -202,5 +225,5 @@ export function useKeyboardShortcuts({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onSave, onNewNote, onBold, onItalic, onFocusSearch, onToggleShortcutRef, onEscape]);
+  }, [onSave, onNewNote, onBold, onItalic, onFocusSearch, onToggleShortcutRef, onEscape, onReadingMode]);
 }

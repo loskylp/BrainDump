@@ -28,6 +28,7 @@
  *   - showShortcutRef: boolean controlling the keyboard shortcut reference overlay (TASK-025)
  *   - tags: array of all user-owned tags fetched from GET /api/tags (TASK-028)
  *   - selectedTagIds: array of tag UUIDs currently active as sidebar filters (TASK-028)
+ *   - readingMode: boolean that replaces WorkspaceLayout with ReadingView when true (TASK-030)
  *
  * Data flow:
  *   Mount -> getNotes() + getFolders() -> populate notes and folders state
@@ -55,6 +56,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.jsx';
+import ReadingView from '../components/reading/ReadingView.jsx';
 import HamburgerToggle from '../components/common/HamburgerToggle.jsx';
 import ShortcutReference from '../components/common/ShortcutReference.jsx';
 import Sidebar from '../components/common/Sidebar.jsx';
@@ -257,6 +259,16 @@ function WorkspacePage() {
 
   /** Whether the version history panel is open. */
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+
+  /**
+   * Whether reading mode is active (TASK-030, REQ-022).
+   * When true, WorkspaceLayout is replaced by ReadingView which occupies the
+   * full viewport with no sidebar. Toggled by the "Read" button in the editor
+   * toolbar and by Cmd/Ctrl+Shift+R. Exited by the ReadingView exit button or
+   * by pressing Escape.
+   * @type {[boolean, Function]}
+   */
+  const [readingMode, setReadingMode] = useState(false);
 
   useVersionTimer({
     noteId: activeNoteId,
@@ -664,16 +676,30 @@ function WorkspacePage() {
   }, []);
 
   /**
-   * Escape shortcut handler — closes the shortcut reference overlay if it is
-   * open; otherwise closes the sidebar overlay on sub-desktop viewports.
+   * Escape shortcut handler — exits reading mode when it is active; closes the
+   * shortcut reference overlay if it is open; otherwise closes the sidebar
+   * overlay on sub-desktop viewports.
+   *
+   * Reading mode takes priority so Escape always has a visible effect when the
+   * user is in the full-screen reading view (TASK-030 AC-6).
    */
   const handleShortcutEscape = useCallback(() => {
-    if (showShortcutRef) {
+    if (readingMode) {
+      setReadingMode(false);
+    } else if (showShortcutRef) {
       setShowShortcutRef(false);
     } else if (sidebarOpen) {
       setSidebarOpen(false);
     }
-  }, [showShortcutRef, sidebarOpen]);
+  }, [readingMode, showShortcutRef, sidebarOpen]);
+
+  /**
+   * Cmd/Ctrl+Shift+R shortcut handler — toggles reading mode on/off
+   * (TASK-030, REQ-022 AC-5).
+   */
+  const handleShortcutReadingMode = useCallback(() => {
+    setReadingMode((prev) => !prev);
+  }, []);
 
   /**
    * Cmd/Ctrl+B shortcut handler — delegates to the Editor's boldSelection()
@@ -699,7 +725,21 @@ function WorkspacePage() {
     onFocusSearch: handleShortcutFocusSearch,
     onToggleShortcutRef: handleShortcutToggleRef,
     onEscape: handleShortcutEscape,
+    onReadingMode: handleShortcutReadingMode,
   });
+
+  /**
+   * Navigates to a different note while staying in reading mode (TASK-030 AC-7).
+   *
+   * Sets the new active note id so the note-content useEffect fetches and
+   * stores the full note. Reading mode stays active — the ReadingView re-renders
+   * with the new note once activeNote updates.
+   *
+   * @param {string} noteId - UUID of the note to navigate to
+   */
+  const handleReadingModeNavigate = useCallback((noteId) => {
+    setActiveNoteId(noteId);
+  }, []);
 
   /**
    * Handles restoration from the VersionHistory panel (TASK-013 AC-8).
@@ -964,6 +1004,14 @@ function WorkspacePage() {
               >
                 Export
               </button>
+              <button
+                data-testid="reading-mode-button"
+                onClick={() => setReadingMode(true)}
+                className="px-3 py-1 text-xs font-mono text-text-primary bg-bg-secondary border border-border hover:bg-border transition-colors"
+                aria-label="Enter reading mode"
+              >
+                Read
+              </button>
             </div>
             {/* Tag input row — shown below the toolbar when a note is active (TASK-028) */}
             <TagInput
@@ -1093,6 +1141,21 @@ function WorkspacePage() {
           />
         )}
       </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reading mode — full-screen ReadingView replaces WorkspaceLayout (TASK-030)
+  // ---------------------------------------------------------------------------
+
+  if (readingMode && activeNote) {
+    return (
+      <ReadingView
+        note={activeNote}
+        notes={notes}
+        onExit={() => setReadingMode(false)}
+        onNavigate={handleReadingModeNavigate}
+      />
     );
   }
 
