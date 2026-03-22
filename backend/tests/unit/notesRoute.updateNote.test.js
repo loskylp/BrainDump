@@ -84,6 +84,7 @@ jest.mock('../../src/middleware/rlsContext', () =>
  * reads guardBehaviour on every request so individual tests can switch
  * behaviour without re-requiring the router module.
  */
+jest.mock('../../src/middleware/rateLimiter', () => jest.fn((_req, _res, next) => next()));
 jest.mock('../../src/middleware/ownershipGuard', () =>
   jest.fn(() =>
     jest.fn((req, res, next) => {

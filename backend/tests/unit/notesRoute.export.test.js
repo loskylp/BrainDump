@@ -63,6 +63,7 @@ jest.mock('../../src/middleware/authenticate', () =>
 );
 
 // Mock rlsContext: no-op
+jest.mock('../../src/middleware/rateLimiter', () => jest.fn((_req, _res, next) => next()));
 jest.mock('../../src/middleware/rlsContext', () =>
   jest.fn((_req, _res, next) => next())
 );

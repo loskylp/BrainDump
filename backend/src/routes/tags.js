@@ -13,6 +13,7 @@ const router = express.Router();
 const authenticate = require('../middleware/authenticate');
 const rlsContext = require('../middleware/rlsContext');
 const tagService = require('../services/tagService');
+const rateLimiter = require('../middleware/rateLimiter');
 
 // Apply authentication and RLS context to all tag routes
 router.use(authenticate);
@@ -47,7 +48,7 @@ router.get('/', async (req, res, next) => {
  * @returns {200} { tag: { id, name, created_at }, created: false } -- existing tag
  * @returns {400} { error: "VALIDATION_ERROR" } -- invalid name
  */
-router.post('/', async (req, res, next) => {
+router.post('/', rateLimiter, async (req, res, next) => {
   try {
     const { name } = req.body || {};
     const { tag, created } = await tagService.createTag(req.session.userId, name);

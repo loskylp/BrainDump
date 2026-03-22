@@ -21,6 +21,7 @@ const ownershipGuard = require('../middleware/ownershipGuard');
 const rlsContext = require('../middleware/rlsContext');
 const noteService = require('../services/noteService');
 const tagService = require('../services/tagService');
+const rateLimiter = require('../middleware/rateLimiter');
 
 // Apply authentication and RLS context to all notes routes
 router.use(authenticate);
@@ -135,9 +136,12 @@ router.get('/export', async (req, res, next) => {
       note_count: notes.length,
     }));
 
-    const username = user ? user.username : 'user';
+    // SEC-015: strip characters that could break the Content-Disposition header
+    // (newlines, carriage returns, quotes) before interpolating username.
+    const rawUsername = user ? user.username : 'user';
+    const safeUsername = rawUsername.replace(/[\r\n"]/g, '');
     const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const zipFilename = `braindump-export-${username}-${date}.zip`;
+    const zipFilename = `braindump-export-${safeUsername}-${date}.zip`;
 
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
@@ -297,7 +301,7 @@ router.delete('/:id', ownershipGuard('Note', 'id'), async (req, res, next) => {
  * @returns {404} { error: "Not found" } -- note or tag does not exist or belongs to another user
  * @returns {400} { error: "VALIDATION_ERROR" } -- invalid tag name
  */
-router.post('/:id/tags', async (req, res, next) => {
+router.post('/:id/tags', rateLimiter, async (req, res, next) => {
   try {
     const { tagId, name } = req.body || {};
     const tag = await tagService.addTagToNote(req.params.id, req.session.userId, { tagId, name });
