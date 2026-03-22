@@ -6,13 +6,14 @@
 
 ## Findings
 
-### SEC-001: No rate limiting on authentication endpoints
+### SEC-001: No rate limiting on authentication endpoints -- DEFERRED TO CYCLE 2
 **Severity:** High
 **Category:** Broken Authentication (OWASP A07:2021)
 **Affected:** `POST /api/auth/login`, `POST /api/auth/register`
 **Evidence:** The backend has no rate-limiting middleware anywhere in the dependency tree (`express-rate-limit` is absent from `backend/package.json`). Login and registration endpoints accept unlimited requests. An attacker can brute-force passwords or create accounts at arbitrary speed.
 **Expected behaviour:** Authentication endpoints should enforce a per-IP or per-account rate limit (e.g., 5 failed login attempts per 15 minutes per IP/email combination).
 **Remediation:** Install `express-rate-limit` (or equivalent). Apply a strict limiter to `/api/auth/login` and `/api/auth/register`. Example configuration: `windowMs: 15 * 60 * 1000, max: 10` for login. Consider stricter limits for registration to prevent mass account creation.
+**Status:** DEFERRED TO CYCLE 2 -- Tracked as TASK-024 in the task plan. Will be addressed as a priority task in Cycle 2 execution.
 
 ---
 
@@ -220,7 +221,7 @@ All dependencies: APPROVE. No rejections. All licenses are MIT or BSD-2-Clause, 
 
 **RETURN TO BUILDER** -- 2 High severity findings must be resolved before Demo Sign-off:
 
-1. **SEC-001 (High):** No rate limiting on authentication endpoints. Install `express-rate-limit` and apply to `/api/auth/login` and `/api/auth/register`.
+1. **SEC-001 (High):** ~~No rate limiting on authentication endpoints.~~ DEFERRED TO CYCLE 2 -- Tracked as TASK-024. Install `express-rate-limit` and apply to `/api/auth/login` and `/api/auth/register`.
 
 2. **SEC-003 (High):** ~~No `.gitignore` file.~~ RESOLVED -- `.gitignore` created on 2026-03-21.
 

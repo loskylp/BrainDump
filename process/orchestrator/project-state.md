@@ -1,21 +1,14 @@
 # Project State
 **Manifest version:** v3 | **Profile:** Commercial
-**Current phase:** CYCLE 3 EXECUTION -- TASK-027 BUILDER COMPLETE, AWAITING VERIFIER
-**Current cycle:** 3
-**Last updated:** 2026-03-21 (TASK-027 tagging backend implemented. Awaiting commit + Verifier dispatch.)
+**Current phase:** GO-LIVE COMPLETE
+**Current cycle:** 3 (CLOSED)
+**Last updated:** 2026-03-22 (Go-Live gate APPROVED by Nexus. v1.0.0 deployed to production at https://braindump.nxlabs.cc. Project delivered.)
 
 ---
 
 ## Where We Are
 
-Cycle 2 is CLOSED. Demo Sign-off was APPROVED by the Nexus on 2026-03-21. All 10 tasks verified PASS, Playwright demo validation completed against staging, two bugs fixed inline during validation (TASK-025 kbd styling, TASK-018 mobile sidebar), screenshots committed. Staging live at https://braindump.staging.nxlabs.cc.
-
-Three new feature requests received from stakeholder demo:
-1. Full export to ZIP (export all notes at once as a ZIP archive)
-2. Global tagging system (tag notes with user-defined labels, filter/browse by tag)
-3. Reading Mode (distraction-free rendered Markdown view, no editor chrome)
-
-Analyst dispatched to produce requirements-v4.md with REQ-020, REQ-021, REQ-022.
+Go-Live gate APPROVED by the Nexus on 2026-03-22. Version v1.0.0 is live in production at https://braindump.nxlabs.cc. All 3 cycles complete (31 tasks across 22 requirements). Project delivered.
 
 TASK-025 verification summary: Commits 17b8159 (iter 1), 873daa7 (iter 2 + Verifier artifacts). CI run 23388053947 -- all 5 jobs green. 8/8 AC passed (including Cmd+B bold, Cmd+I italic).
 
@@ -48,29 +41,21 @@ TASK-024 verification summary: Commits 39b7dc1, c9d19dc, 3a6991f, 1238fad. CI ru
 10. TASK-020 Fitness function instrumentation (P2, depends on TASK-014) -- COMPLETE
 
 **Standing flags:**
-- All tasks complete. Sentinel cycle-level security review in progress.
-- After Sentinel report: prepare Demo Sign-off Briefing with Playwright demo validation.
+- All 22 requirements addressed across 3 cycles. No unplaced requirements.
+- Operator actions pending for production deploy (TASK-031) and monitoring config (TASK-032).
 
 **CI INCIDENT (2026-03-21, RESOLVED):** All CI jobs failing, staging unreachable. Four root causes identified and fixed (see ESC-002 in escalation log). CI pipeline restored.
 
 ## Active Work
 
-**Agent in control:** Builder (TASK-027 complete, awaiting commit and Verifier)
-**Current task:** TASK-027 -- Tagging backend: schema, model, API
-**Iteration:** 1 of 3 (Builder implementation complete)
-**Waiting for:** Git commit + push, then Verifier dispatch
-**Completed:** Requirements Gate APPROVED. ADR-010 + ADR-011 produced. Planner produced task-plan-v3.md. TASK-027 code written (3 migrations, 2 models, 1 service, 1 route file, updated notes routes + app.js + search service + models/index.js).
+**Agent in control:** None (project delivered)
+**Current task:** None
+**Waiting for:** Nothing -- Go-Live complete
 
-**Scaffolder:** COMPLETE. 16 new stub files created, 4 additive extensions, express-rate-limit added to package.json. Manifest at process/scaffolder/scaffold-manifest-cycle2.md.
-**Methodologist retrospective:** COMPLETE. Manifest updated to v3.
-**TASK-024:** VERIFIED PASS (1 iteration). SEC-001 resolved.
-**TASK-014:** VERIFIED PASS (1 iteration). Commit 34738a5. CI run 23383138143. 201 backend / 302 frontend tests.
-**TASK-015:** VERIFIED PASS (1 iteration). Commits 3b21af7, b03f4e8. CI run 23383805381. 217 backend unit + 29 acceptance. 8/8 AC.
-**TASK-017:** VERIFIED PASS (2 iterations). CI run 23385024748. All 9 AC passed. Stale test fix 5f22b50.
-**TASK-021:** VERIFIED PASS. Commit 49c6fa8. CI run 23385582169. All 8 AC passed. OBS-V004-05 resolved.
-**TASK-018:** VERIFIED PASS (1 iteration). Commit ee1c869. CI run 23386191945. 6/6 AC. OBS-V007-02 resolved.
-**TASK-019:** VERIFIED PASS (1 iteration). Commits 4f5fbea, 9f9caa8. CI runs 23386531154 + 23386712360. 5/5 AC. Cascade deletion verified.
-**TASK-020:** VERIFIED PASS (1 iteration). Commit 6ee066e. CI run 23387142494. FF-D24/FF-D04/FF-D12/FF-D16 passing. Staging confirmed healthy.
+**Production:**
+- URL: https://braindump.nxlabs.cc
+- Version: v1.0.0
+- Status: LIVE (confirmed by Nexus 2026-03-22)
 
 ---
 
@@ -129,19 +114,21 @@ TASK-024 verification summary: Commits 39b7dc1, c9d19dc, 3a6991f, 1238fad. CI ru
 
 | Task | Status | Iterations | Verifier |
 |---|---|---|---|
-| TASK-027: Tagging backend | IN PROGRESS | 1 of 3 | AWAITING VERIFIER |
-| TASK-028: Tagging frontend | PENDING | -- | -- |
-| TASK-029: Bulk export to ZIP | PENDING | -- | -- |
-| TASK-030: Reading mode | PENDING | -- | -- |
-| TASK-031: DevOps Phase 3 -- production | PENDING | -- | -- |
-| TASK-032: Production monitoring | PENDING | -- | -- |
-| TASK-033: Sentinel security review | PENDING | -- | -- |
+| TASK-027: Tagging backend | DONE | -- | PASS (12/12 AC) |
+| TASK-028: Tagging frontend | DONE | -- | PASS |
+| TASK-029: Bulk export to ZIP | DONE | -- | PASS |
+| TASK-030: Reading mode | DONE | -- | PASS |
+| TASK-031: DevOps Phase 3 -- production | DONE | -- | PASS (operator actions pending) |
+| TASK-032: Production monitoring | DONE | -- | PASS (operator actions pending) |
+| TASK-033: Sentinel security review | DONE | -- | PASS (0 Critical, 0 High unresolved) |
 
 **Cycle summary:**
-- Tasks complete: 0 of 7
+- Tasks complete: 7 of 7 (all Cycle 3 tasks)
 - Tasks in progress: 0
-- Tasks pending: 7
-- Builder execution order: TASK-027 >> TASK-028 >> TASK-029 >> TASK-030
+- Tasks pending: 0
+- Sentinel: COMPLETE -- both findings resolved inline before cycle close
+- Demo Sign-off: APPROVED (2026-03-22) -- Playwright validation complete (12/12 scenarios PASS)
+- Requirements satisfied this cycle: REQ-020 (ZIP export), REQ-021 (tagging), REQ-022 (reading mode)
 
 ---
 
@@ -156,13 +143,17 @@ TASK-024 verification summary: Commits 39b7dc1, c9d19dc, 3a6991f, 1238fad. CI ru
 | Requirements Gate -- v4 (Cycle 3 features) | 2026-03-21 | APPROVED | Three new requirements (REQ-020 ZIP export, REQ-021 tagging, REQ-022 reading mode). Nexus clarifications applied: complete collection/no history for ZIP, Unicode+digits+hyphens/no spaces for tags, OR filter confirmed. |
 | Demo Sign-off -- Cycle 1 | 2026-03-21 | ACCEPTED | 14/14 tasks PASS, 448 tests, Sentinel clear. 12 Playwright screenshots reviewed and committed. |
 | Demo Sign-off -- Cycle 2 | 2026-03-21 | APPROVED | 10/10 tasks PASS. Playwright demo validation complete. Two inline bug fixes. Screenshots committed. |
-| Go-Live -- v1.0.0 | -- | -- | |
+| Demo Sign-off -- Cycle 3 | 2026-03-22 | APPROVED | 7/7 tasks DONE. Playwright 12/12 scenarios PASS. Sentinel findings resolved. All 22 requirements addressed. |
+| Go-Live -- v1.0.0 | 2026-03-22 | APPROVED | Production live at https://braindump.nxlabs.cc. Nexus confirmed: "Go live was a success." |
 
 ---
 
 ## Pending Decisions
 
-Plan Gate presented (lightweight). Scaffolder dispatched for Cycle 3 stub creation. Builder-Verifier loop begins after scaffolding.
+Go-Live APPROVED on 2026-03-22. v1.0.0 deployed and confirmed live at https://braindump.nxlabs.cc. No pending decisions.
+
+**Non-blocking observation for operator awareness:**
+- OBS-V031-01 / OBS-V021-03: Node.js 20 reaches end-of-life. Upgrade to Node.js 22 LTS before 2026-06-02.
 
 ---
 
@@ -176,22 +167,8 @@ Plan Gate presented (lightweight). Scaffolder dispatched for Cycle 3 stub creati
 
 ## Iterate Loop State
 
-**Task:** TASK-027 -- Tagging backend
-**Iteration:** 1 of 3 (Builder implementation complete)
-**Failure trend:** N/A (first iteration)
-**Convergence check:** N/A
-**Next action:** Commit and push TASK-027 code. Dispatch Verifier for TASK-027. On PASS, proceed to TASK-028 (tagging frontend).
-
-**Previous task:** TASK-026 -- VERIFIED PASS. CI all 5 jobs green. 7/7 AC. 510/510 frontend tests. 1 iteration.
-**Prior task:** TASK-025 -- VERIFIED PASS. Commits 17b8159 + 873daa7. CI run 23388053947. 8/8 AC. 2 iterations.
-**Prior task:** TASK-020 -- VERIFIED PASS. Commit 6ee066e. CI run 23387142494. All 5 jobs green. FF-D24/FF-D04/FF-D12/FF-D16 passing. 1 iteration.
-**Prior task:** TASK-019 -- VERIFIED PASS. Commits 4f5fbea, 9f9caa8. CI runs 23386531154 + 23386712360. 5/5 AC. 1 iteration. Cascade deletion verified.
-**Prior task:** TASK-018 -- VERIFIED PASS. Commit ee1c869. CI run 23386191945. 6/6 AC. 1 iteration. OBS-V007-02 resolved.
-**Prior task:** TASK-021 -- VERIFIED PASS. Commit 49c6fa8. CI run 23385582169. 8/8 AC. OBS-V004-05 resolved.
-**Prior task:** TASK-017 -- VERIFIED PASS in 2 iterations. No escalation.
-**Prior task:** TASK-015 -- VERIFIED PASS in 1 iteration. No failures, no escalation.
-**Prior task:** TASK-014 -- VERIFIED PASS in 1 iteration. No failures, no escalation.
-**Prior task:** TASK-024 -- VERIFIED PASS in 1 iteration. No failures, no escalation.
+**Cycle 3:** CLOSED. All tasks DONE. No active iterate loop.
+**Last task completed:** TASK-033 (Sentinel security review) -- PASS, both findings resolved inline.
 
 ---
 
@@ -326,6 +303,7 @@ This process was codified after Cycle 1 demo validation on 2026-03-21.
 | ADR-011 | `process/architect/adr/ADR-011-bulk-export.md` | v1 (bulk ZIP export backend endpoint) |
 | Audit -- Architecture Cycle 3 | `process/auditor/audit-architecture-cycle3-adrs.md` | PASS (0 blocking, 4 non-blocking) |
 | Task Plan -- Cycle 3 | `process/planner/task-plan-v3.md` | v3 (7 tasks: 4 Builder, 2 DevOps, 1 Sentinel) |
+| Go-Live Briefing | `process/orchestrator/golive-briefing-v1.md` | v1 (GO-LIVE CONFIRMED, 2026-03-22) |
 
 ---
 
@@ -506,3 +484,6 @@ This process was codified after Cycle 1 demo validation on 2026-03-21.
 | Demo Sign-off -- Cycle 1 | 2026-03-21 | Accepted -- 14/14 tasks, 12 screenshots reviewed, demo validation process codified |
 | Plan Gate -- Cycle 2 | 2026-03-21 | Approved -- 10 tasks, 2 untraced features accepted with requirement creation before Builder |
 | Demo Sign-off -- Cycle 2 | 2026-03-21 | Approved -- 10/10 tasks, Playwright validation complete, two inline bug fixes, screenshots committed |
+| Requirements Gate -- v4 | 2026-03-21 | Approved -- REQ-020, REQ-021, REQ-022 locked |
+| Plan Gate -- Cycle 3 | 2026-03-21 | Approved -- 7 tasks (4 Builder, 2 DevOps, 1 Sentinel) |
+| Demo Sign-off -- Cycle 3 | 2026-03-22 | Approved -- 7/7 tasks DONE, 12/12 Playwright scenarios PASS, Sentinel clear |

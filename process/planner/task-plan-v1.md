@@ -467,6 +467,25 @@
 
 ---
 
+### TASK-024: Rate limiting on authentication endpoints (SEC-001)
+**Requirement(s):** REQ-001, REQ-002 (security hardening)
+**ADR(s):** ADR-002
+**Priority Group:** P2 | **Risk:** Low | **Value:** High
+**Risk justification:** Well-understood middleware (`express-rate-limit`), no architectural unknowns (Low).
+**Value justification:** Sentinel finding SEC-001 (High severity). Brute-force and credential stuffing protection for login and registration endpoints. Blocks Demo Sign-off until resolved (High).
+**Dependencies:** TASK-004 >> TASK-024 (auth endpoints must exist)
+**Source:** Sentinel Cycle 1 Security Report -- SEC-001
+**Acceptance Criteria:**
+1. `express-rate-limit` is installed as a production dependency in `backend/package.json`
+2. `POST /api/auth/login` is rate-limited to 10 requests per 15-minute window per IP address; exceeding the limit returns HTTP 429 with a clear error message
+3. `POST /api/auth/register` is rate-limited to 10 requests per 15-minute window per IP address; exceeding the limit returns HTTP 429 with a clear error message
+4. Rate limit headers (`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`) are included in responses to rate-limited endpoints
+5. Rate limiter uses the default in-memory store (acceptable for single-instance deployment per ADR-001)
+6. Existing authentication tests continue to pass (no regressions)
+**Fitness Functions:** FF-D03, FF-D04
+
+---
+
 ## Pass 2: Scoring Summary and Priority Matrix
 
 ### Scoring Table
@@ -496,6 +515,7 @@
 | TASK-021 | Medium | Medium | P2 | Enables CD, needed before Go-Live |
 | TASK-022 | Medium | Medium | P3 | Production setup, needed before Go-Live only |
 | TASK-023 | Low | Medium | P3 | Monitoring, needed before Go-Live only |
+| TASK-024 | Low | High | P2 | SEC-001 remediation: rate limiting on auth endpoints |
 
 ### Walking Skeleton (Cycle 1 Target)
 
@@ -626,11 +646,11 @@ None. All 17 requirements are placed.
 **Scaffolder:** Yes (14 Builder tasks)
 **Walking skeleton achieved:** Yes -- end-to-end path through every major layer
 
-#### Cycle 2: Search, Password Reset, Folders, and Quality
-**Tasks:** TASK-014, TASK-015, TASK-017, TASK-018, TASK-020, TASK-021
+#### Cycle 2: Search, Password Reset, Folders, Quality, and Security Hardening
+**Tasks:** TASK-014, TASK-015, TASK-017, TASK-018, TASK-020, TASK-021, TASK-024
 **Priority Group:** P2
 **Demo:** User searches notes by keyword (title and body matches with relevance ranking), resets forgotten password via email link, organizes notes into folders, responsive layout at tablet breakpoints. CI/CD pipeline deploys to staging automatically.
-**Scaffolder:** Yes (6 Builder tasks)
+**Scaffolder:** Yes (7 Builder tasks)
 
 #### Cycle 3: Production Readiness
 **Tasks:** TASK-022, TASK-023
@@ -666,9 +686,9 @@ None. All 17 requirements are placed.
 
 | Metric | Count |
 |---|---|
-| Total tasks | 23 |
+| Total tasks | 24 |
 | Cycle 1 tasks (P1) | 14 |
-| Cycle 2 tasks (P2) | 6 |
+| Cycle 2 tasks (P2) | 7 |
 | Cycle 3 tasks (P3) | 2 |
 | Deferred (below cut line) | 1 |
 | Requirements covered | 17/17 |
