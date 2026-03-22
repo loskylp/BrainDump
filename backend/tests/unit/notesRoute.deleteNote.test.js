@@ -64,7 +64,7 @@ jest.mock('../../src/middleware/rlsContext', () =>
   jest.fn((_req, _res, next) => next())
 );
 
-jest.mock('../../src/middleware/rateLimiter', () => jest.fn((_req, _res, next) => next()));
+jest.mock('../../src/middleware/rateLimiter', () => ({ rateLimiter: jest.fn((_req, _res, next) => next()) }));
 jest.mock('../../src/middleware/ownershipGuard', () =>
   jest.fn(() =>
     jest.fn((req, res, next) => {

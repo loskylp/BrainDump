@@ -79,4 +79,24 @@ const authRateLimiter = rateLimit({
   skip: () => process.env.NODE_ENV === 'test',
 });
 
-module.exports = { authRateLimiter };
+/**
+ * General-purpose rate limiter for write endpoints (tag creation, etc.).
+ *
+ * Configuration:
+ *   windowMs - 15 * 60 * 1000  (15-minute sliding window)
+ *   max      - 60              (60 requests per window per IP)
+ *
+ * More permissive than authRateLimiter — protects against automated bulk
+ * creation without throttling normal interactive use.
+ */
+const rateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
+  keyGenerator: (req) => req.ip,
+  skip: () => process.env.NODE_ENV === 'test',
+});
+
+module.exports = { authRateLimiter, rateLimiter };

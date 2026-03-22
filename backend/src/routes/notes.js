@@ -21,7 +21,7 @@ const ownershipGuard = require('../middleware/ownershipGuard');
 const rlsContext = require('../middleware/rlsContext');
 const noteService = require('../services/noteService');
 const tagService = require('../services/tagService');
-const rateLimiter = require('../middleware/rateLimiter');
+const { rateLimiter } = require('../middleware/rateLimiter');
 
 // Apply authentication and RLS context to all notes routes
 router.use(authenticate);

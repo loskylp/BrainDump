@@ -13,7 +13,7 @@ const router = express.Router();
 const authenticate = require('../middleware/authenticate');
 const rlsContext = require('../middleware/rlsContext');
 const tagService = require('../services/tagService');
-const rateLimiter = require('../middleware/rateLimiter');
+const { rateLimiter } = require('../middleware/rateLimiter');
 
 // Apply authentication and RLS context to all tag routes
 router.use(authenticate);
