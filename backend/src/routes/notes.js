@@ -128,6 +128,13 @@ router.get('/export', async (req, res, next) => {
       noteService.getAllNotesWithFolders(userId),
     ]);
 
+    // Structured export frequency log (TASK-032, AC-2). Written to stdout.
+    console.log(JSON.stringify({
+      event: 'export',
+      userId,
+      note_count: notes.length,
+    }));
+
     const username = user ? user.username : 'user';
     const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const zipFilename = `braindump-export-${username}-${date}.zip`;

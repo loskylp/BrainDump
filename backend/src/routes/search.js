@@ -46,7 +46,19 @@ router.get('/', async (req, res, next) => {
   }
 
   try {
+    const start = Date.now();
     const results = await searchService.search(req.session.userId, q);
+    const duration_ms = Date.now() - start;
+
+    // Structured search latency log (TASK-032, AC-2). Written to stdout so it
+    // flows to the Docker log stream and can be piped to a log aggregator.
+    console.log(JSON.stringify({
+      event: 'search',
+      query: q,
+      duration_ms,
+      result_count: results.length,
+    }));
+
     return res.status(200).json({ results });
   } catch (err) {
     if (err.message === 'EMPTY_QUERY') {

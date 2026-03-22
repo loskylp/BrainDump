@@ -50,6 +50,18 @@ router.post('/register', authRateLimiter, async (req, res, next) => {
       },
     });
   } catch (err) {
+    // Log auth failures as structured JSON to stderr (TASK-032, AC-2).
+    // Emit only on errors that produce a 401/409 response so genuine
+    // infrastructure errors are handled by the centralised error handler.
+    if (err.code === 'EMAIL_TAKEN' || err.code === 'VALIDATION_ERROR') {
+      console.error(JSON.stringify({
+        event: 'auth_failure',
+        endpoint: 'register',
+        email: req.body && req.body.email,
+        reason: err.code,
+        ip: req.ip,
+      }));
+    }
     next(err);
   }
 });
@@ -124,6 +136,16 @@ router.post('/login', authRateLimiter, async (req, res, next) => {
       },
     });
   } catch (err) {
+    // Log auth failures as structured JSON to stderr (TASK-032, AC-2).
+    if (err.code === 'INVALID_CREDENTIALS') {
+      console.error(JSON.stringify({
+        event: 'auth_failure',
+        endpoint: 'login',
+        email: req.body && req.body.email,
+        reason: err.code,
+        ip: req.ip,
+      }));
+    }
     next(err);
   }
 });
