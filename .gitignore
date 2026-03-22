@@ -1,6 +1,8 @@
 # Environment variables and secrets
 .env
 .env.*
+# Example/template files with placeholder values are safe to commit
+!.env.*.example
 
 # Dependencies
 node_modules/

@@ -1,0 +1,51 @@
+# docker-compose.production.yml
+#
+# Production environment for BrainDump on nxlabs.cc.
+# Location on server: /opt/braindump/docker-compose.production.yml
+# Per ADR-007: https://github.com/loskylp/BrainDump/blob/main/process/architect/adr/ADR-007-deployment-model.md
+#
+# First-time setup:
+#   1. ssh deploy@nxlabs.cc /opt/postgres/provision.sh braindump-production
+#   2. Create /opt/braindump/.env.production with the credentials from step 1 (see .env.production.example for variable names)
+#   3. docker compose -f docker-compose.production.yml pull
+#   4. docker compose -f docker-compose.production.yml up -d
+#
+# Subsequent deploys are handled automatically by Watchtower (polls every 5 min).
+# CI pushes ghcr.io/loskylp/braindump:latest when a git tag matching v* is pushed.
+# Operator cuts a release by running: git tag v3.0.0 && git push origin v3.0.0
+#
+# Required .env.production variables on the server (see .env.production.example):
+#   POSTGRES_URL=postgresql://braindump_prod:<password>@postgres:5432/braindump_prod
+#   SESSION_SECRET=<long random string, minimum 64 chars, different from staging>
+#   NODE_ENV=production
+#   APP_URL=https://braindump.nxlabs.cc
+#   EMAIL_PROVIDER=console
+#   EMAIL_FROM=noreply@nxlabs.cc
+
+services:
+  braindump-production:
+    image: ghcr.io/loskylp/braindump:latest
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    labels:
+      # Traefik routing
+      - "traefik.enable=true"
+      - "traefik.http.routers.braindump-production.rule=Host(`braindump.nxlabs.cc`)"
+      - "traefik.http.routers.braindump-production.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.braindump-production.entrypoints=websecure"
+      - "traefik.http.services.braindump-production.loadbalancer.server.port=3000"
+      # Watchtower auto-update (picks up new :latest tags)
+      - "com.centurylinklabs.watchtower.enable=true"
+      # Uptime Kuma monitoring via AutoKuma (auto-registers health check)
+      - "kuma.braindump-production.http.name=BrainDump Production"
+      - "kuma.braindump-production.http.url=https://braindump.nxlabs.cc/api/health"
+    networks:
+      - traefik
+      - postgres
+
+networks:
+  traefik:
+    external: true
+  postgres:
+    external: true

@@ -23,7 +23,7 @@ BrainDump runs on `nxlabs.cc` (187.124.233.130) as a single Docker container man
 | Environment | URL | Image tag | Compose file | DB |
 |---|---|---|---|---|
 | Staging | https://braindump.staging.nxlabs.cc | `ghcr.io/loskylp/braindump:staging` | `/opt/braindump/docker-compose.staging.yml` | `braindump` on shared PostgreSQL |
-| Production | https://braindump.nxlabs.cc | `ghcr.io/loskylp/braindump:latest` | `/opt/braindump/docker-compose.prod.yml` | `braindump_prod` on shared PostgreSQL (not yet provisioned -- Phase 3) |
+| Production | https://braindump.nxlabs.cc | `ghcr.io/loskylp/braindump:latest` | `/opt/braindump/docker-compose.production.yml` | `braindump_prod` on shared PostgreSQL |
 
 **Parity note:** The staging database was provisioned as `braindump` / `braindump` (deviation from ADR-007 which specifies `braindump_staging` / `braindump_staging`). The database is in production use for staging and will not be renamed. This gap is documented here. Production will use the correct naming (`braindump_prod`).
 
@@ -40,10 +40,10 @@ SSH key authentication only. Root login is disabled. The `deploy` user has Docke
 Files live at `/opt/braindump/`:
 ```
 /opt/braindump/
-  docker-compose.staging.yml   # staging Compose file (version-controlled in repo)
-  .env.staging                 # staging secrets (not version-controlled, never commit)
-  docker-compose.prod.yml      # production Compose file (Phase 3)
-  .env.prod                    # production secrets (Phase 3, not version-controlled)
+  docker-compose.staging.yml      # staging Compose file (version-controlled in repo)
+  .env.staging                    # staging secrets (not version-controlled, never commit)
+  docker-compose.production.yml   # production Compose file (version-controlled in repo)
+  .env.production                 # production secrets (not version-controlled, never commit)
 ```
 
 ---
@@ -80,7 +80,10 @@ Watchtower on nxlabs.cc (polls every 5 minutes)
 
 **Total time from push to staging deploy:** approximately 10-15 minutes (5-8 min CI + up to 5 min Watchtower polling).
 
-**Image push policy:** CI only pushes `:staging`. The `:latest` tag is reserved for production and is applied manually by the operator after Nexus Demo Sign-off approval.
+**Image push policy:**
+- CI pushes `:staging` on every green build to `main`.
+- CI pushes `:<version>` and `:latest` when a git tag matching `v*` is pushed (e.g. `git tag v3.0.0 && git push origin v3.0.0`). This is the production release mechanism.
+- The `:latest` tag is what the production container tracks. Watchtower on nxlabs.cc detects the new digest and restarts the production container within 5 minutes of a tag push completing CI.
 
 ---
 
@@ -233,7 +236,18 @@ All environment configuration is via `.env` files on the server. These files are
 | `EMAIL_PROVIDER` | `console` (no real email sent from staging) |
 | `EMAIL_FROM` | `noreply@staging.nxlabs.cc` |
 
-**Production** (`/opt/braindump/.env.prod`): Not yet provisioned (Phase 3). Will use a separate database, separate session secret, and a real email provider.
+**Production** (`/opt/braindump/.env.production`):
+
+| Variable | Value pattern |
+|---|---|
+| `POSTGRES_URL` | `postgresql://braindump_prod:<password>@postgres:5432/braindump_prod` |
+| `SESSION_SECRET` | Long random string, minimum 64 chars, unique to production |
+| `NODE_ENV` | `production` |
+| `APP_URL` | `https://braindump.nxlabs.cc` |
+| `EMAIL_PROVIDER` | `console` (update to a real provider when email delivery is required) |
+| `EMAIL_FROM` | `noreply@nxlabs.cc` |
+
+See `.env.production.example` in the repository root for a committed template with placeholder values.
 
 **To update an environment variable:**
 1. Edit the `.env.staging` file on the server.
@@ -243,23 +257,25 @@ Changes take effect immediately on restart. No image rebuild required for env va
 
 ---
 
-## 10. Production Promotion (Continuous Delivery)
+## 10. Production Promotion (Cycle-based Deployment)
 
-Production deploys happen on Nexus approval at Demo Sign-off, not automatically. The operator promotes the staging-proven image:
+Production deploys happen on Nexus Go-Live approval, not automatically on every commit. The operator cuts a release by pushing a git tag:
 
 ```sh
-# Authenticate with GitHub Container Registry
-echo $GITHUB_TOKEN | docker login ghcr.io -u <username> --password-stdin
-
-# Re-tag the staging image as latest (production)
-docker pull ghcr.io/loskylp/braindump:staging
-docker tag ghcr.io/loskylp/braindump:staging ghcr.io/loskylp/braindump:latest
-docker push ghcr.io/loskylp/braindump:latest
+# After Nexus Go-Live approval -- on the operator's local machine
+git tag v3.0.0
+git push origin v3.0.0
 ```
 
-Watchtower on nxlabs.cc detects the new `:latest` image and restarts the `braindump-prod` container within 5 minutes.
+This triggers CI (all tests run). If CI is green, the `build-and-push` job pushes two tags to ghcr.io:
+- `ghcr.io/loskylp/braindump:3.0.0` (pinnable version tag)
+- `ghcr.io/loskylp/braindump:latest` (production tag Watchtower tracks)
 
-**The `:latest` tag is never pushed by CI directly.** Only the operator pushes `:latest`, after Nexus Demo Sign-off approval. This is the gating mechanism for production deployments.
+Watchtower on nxlabs.cc detects the new `:latest` digest and restarts the `braindump-production` container within 5 minutes.
+
+**Total time from tag push to production deploy:** approximately 10-15 minutes (CI) + up to 5 minutes (Watchtower polling).
+
+**The `:latest` tag is only pushed by CI on a v* git tag.** Commits to `main` push `:staging` only. This is the gating mechanism for production deployments.
 
 ---
 
@@ -297,7 +313,11 @@ Triggers: every push and PR to `main`
 | `unit-tests` | Jest unit tests (no DB) | None |
 | `integration-tests` | Jest integration tests | Ephemeral PostgreSQL 16 (CI service container) |
 | `migration-test` | Fresh DB, all migrations, full test suite (`--runInBand`) | Ephemeral PostgreSQL 16 (CI service container) |
-| `build-and-push` | Build Docker image; push `:staging` to ghcr.io on green `main` push | None |
+| `build-and-push` | Build Docker image; push `:staging` on green `main` push; push `:<version>` and `:latest` on green `v*` tag push | None |
+
+**Tag push behavior:**
+- `git push origin main` (commit) → CI pushes `ghcr.io/loskylp/braindump:staging`
+- `git push origin v3.0.0` (tag) → CI pushes `ghcr.io/loskylp/braindump:3.0.0` and `ghcr.io/loskylp/braindump:latest`
 
 `build-and-push` depends on all four test jobs. The image is only pushed when all tests pass.
 
@@ -311,12 +331,192 @@ Triggers: every push and PR to `main`
 |---|---|---|
 | Database naming | Staging DB is `braindump`/`braindump` (not `braindump_staging`/`braindump_staging` per ADR-007) | Low -- databases are isolated; naming is cosmetic for staging |
 | `NODE_ENV` | Staging uses `staging` instead of `production` | Application code must treat `staging` and `production` equivalently (documented in environment-contract-v1.md) |
-| Email | Staging uses `EMAIL_PROVIDER=console`; production uses a real provider | Email delivery bugs not caught until production |
-| Production env | Production environment not yet provisioned (Phase 3) | No production risk until Phase 3 |
+| Email | Both staging and production currently use `EMAIL_PROVIDER=console`; no real email delivery | Email delivery bugs not catchable in either environment until a real provider is configured |
 
 ---
 
-## 14. Self-Verification Evidence
+## 14. Production Environment Setup (First-Time, Operator-Run)
+
+These steps require SSH access to nxlabs.cc and must be completed before the first production release tag is pushed. AC-2, AC-3, and AC-9 from TASK-031 require these server-side actions.
+
+### Step 1 -- Provision the production database (AC-2)
+
+```sh
+ssh deploy@nxlabs.cc
+/opt/postgres/provision.sh braindump-production
+# Note the generated username, password, and database name from the output.
+# The script creates: user=braindump_prod, db=braindump_prod, and prints the password.
+```
+
+### Step 2 -- Create the production env file (AC-3)
+
+```sh
+ssh deploy@nxlabs.cc
+cp /opt/braindump/.env.production.example /opt/braindump/.env.production
+# Edit the file and fill in real values:
+nano /opt/braindump/.env.production
+```
+
+Fill in:
+- `POSTGRES_URL` with the credentials from Step 1 (e.g. `postgresql://braindump_prod:<password>@postgres:5432/braindump_prod`)
+- `SESSION_SECRET` with a long random string (minimum 64 chars): `openssl rand -base64 64`
+- Leave `NODE_ENV=production`, `APP_URL=https://braindump.nxlabs.cc`, `EMAIL_PROVIDER=console`, `EMAIL_FROM=noreply@nxlabs.cc`
+
+### Step 3 -- Pull the Compose file and start the container
+
+The Compose file is version-controlled in the repository. Copy it to the server (or pull the repo):
+
+```sh
+ssh deploy@nxlabs.cc
+cd /opt/braindump
+# If deploying from the repo directly:
+git pull origin main
+# Or copy the file manually:
+# scp docker-compose.production.yml deploy@nxlabs.cc:/opt/braindump/
+
+docker compose -f docker-compose.production.yml pull
+docker compose -f docker-compose.production.yml up -d
+```
+
+Migrations run automatically on first start via the container entrypoint.
+
+### Step 4 -- Verify production health (AC-9)
+
+```sh
+curl -s https://braindump.nxlabs.cc/api/health
+# Expected: {"status":"ok","db":"connected"} (HTTP 200)
+
+ssh deploy@nxlabs.cc "docker ps --filter name=braindump-production --format 'table {{.Names}}\t{{.Status}}'"
+# Expected: Up N minutes (healthy)
+```
+
+---
+
+## 15. Production Release Procedure
+
+After the production container is running (Section 14 complete), all subsequent deploys happen via git tags.
+
+### Cutting a release
+
+```sh
+# On the operator's local machine, after Nexus Go-Live approval
+git tag v3.0.0
+git push origin v3.0.0
+```
+
+CI runs all tests. If green, it pushes `ghcr.io/loskylp/braindump:3.0.0` and `ghcr.io/loskylp/braindump:latest` to ghcr.io. Watchtower picks up the new `:latest` digest and restarts the production container within 5 minutes.
+
+**Total time from tag push to live:** approximately 10-15 minutes (CI) + up to 5 minutes (Watchtower).
+
+### Verify after release
+
+```sh
+curl -s https://braindump.nxlabs.cc/api/health
+# Expected: {"status":"ok","db":"connected"}
+
+# Check container is running the new image
+ssh deploy@nxlabs.cc "docker inspect braindump-braindump-production-1 --format '{{.Config.Image}}'"
+# Expected: ghcr.io/loskylp/braindump:latest
+
+# Check Watchtower pulled the new image
+ssh deploy@nxlabs.cc "docker logs watchtower --tail 20"
+# Expected: lines showing the pull and restart of braindump-production
+```
+
+### Production logs
+
+```sh
+ssh deploy@nxlabs.cc
+
+# Live log stream
+docker logs braindump-braindump-production-1 -f
+
+# Last 100 lines
+docker logs braindump-braindump-production-1 --tail 100
+
+# Filter for migration output
+docker logs braindump-braindump-production-1 2>&1 | grep -E '(entrypoint|migration|Migrations)'
+```
+
+---
+
+## 16. Production Rollback Procedure (AC-10)
+
+If a release introduces a regression, roll back by pinning to a previous image tag.
+
+### Option A -- Roll back to a specific version tag (preferred)
+
+```sh
+ssh deploy@nxlabs.cc
+cd /opt/braindump
+
+# Edit the Compose file to pin to the previous version tag
+# Change: image: ghcr.io/loskylp/braindump:latest
+# To:     image: ghcr.io/loskylp/braindump:2.x.x
+nano docker-compose.production.yml
+
+docker compose -f docker-compose.production.yml pull
+docker compose -f docker-compose.production.yml up -d
+```
+
+Watchtower will no longer auto-update the pinned container (it only watches tags, and the pinned tag digest has not changed). To re-enable auto-updates, restore `image: ghcr.io/loskylp/braindump:latest` and restart.
+
+### Option B -- Immediate rollback using locally cached image
+
+```sh
+ssh deploy@nxlabs.cc
+
+# List available local images
+docker images ghcr.io/loskylp/braindump --format "table {{.Tag}}\t{{.ID}}\t{{.CreatedAt}}"
+
+# Re-tag the previous image as latest to force Watchtower to pick it up
+docker tag ghcr.io/loskylp/braindump:<previous-tag> ghcr.io/loskylp/braindump:latest
+docker compose -f /opt/braindump/docker-compose.production.yml up -d
+```
+
+### Rollback verification
+
+```sh
+curl -s https://braindump.nxlabs.cc/api/health
+# Expected: {"status":"ok","db":"connected"}
+```
+
+---
+
+## 17. Production Environment Variable Management
+
+### Updating a variable without downtime
+
+Environment variables are read at container start. To rotate a variable:
+
+1. Edit `/opt/braindump/.env.production` on the server.
+2. Restart the container: `docker compose -f docker-compose.production.yml up -d`
+
+The restart takes a few seconds (Docker stops the old container, starts the new one). Traefik stops routing during the few-second gap. Schedule rotations during low-traffic periods.
+
+### Rotating SESSION_SECRET
+
+Rotating `SESSION_SECRET` invalidates all active sessions -- every logged-in user will be logged out.
+
+```sh
+ssh deploy@nxlabs.cc
+
+# Generate a new secret
+openssl rand -base64 64
+
+# Edit the env file
+nano /opt/braindump/.env.production
+# Replace SESSION_SECRET value with the new one
+
+# Restart (all sessions invalidated on restart)
+docker compose -f /opt/braindump/docker-compose.production.yml up -d
+```
+
+Inform users before rotating if the service has active users. There is no zero-downtime session rotation mechanism -- sessions are stored in the database and bound to the secret.
+
+---
+
+## 18. Self-Verification Evidence
 
 This runbook was written after verifying the following:
 
@@ -332,3 +532,5 @@ This runbook was written after verifying the following:
 | Uptime Kuma labels | `kuma.braindump-staging.http.name` and `kuma.braindump-staging.http.url` on container |
 | Service name aligned | Container named `braindump-braindump-staging-1` (service `braindump-staging` per ADR-007) |
 | CI pipeline | All 5 jobs green on every recent main branch push |
+| Production Compose file | `docker-compose.production.yml` verified: service name `braindump-production`, image `:latest`, Traefik host `braindump.nxlabs.cc`, Watchtower label present, Uptime Kuma labels present |
+| CI tag push | `.github/workflows/ci.yml` updated: `on.push.tags: ["v*"]`, login/push conditions include `startsWith(github.ref, 'refs/tags/v')`, metadata tags include `type=semver` and `type=raw,value=latest` |
