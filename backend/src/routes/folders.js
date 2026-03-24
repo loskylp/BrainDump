@@ -15,6 +15,7 @@
 const express = require('express');
 const router = express.Router();
 const { Folder } = require('../models');
+const sequelize = require('../config/database');
 const authenticate = require('../middleware/authenticate');
 const ownershipGuard = require('../middleware/ownershipGuard');
 const rlsContext = require('../middleware/rlsContext');
@@ -37,8 +38,17 @@ router.use(rlsContext);
  */
 router.get('/', async (req, res, next) => {
   try {
-    const folders = await Folder.scope({ method: ['forUser', req.session.userId] }).findAll({
-      order: [['name', 'ASC']],
+    const userId = req.session.userId;
+    const folders = await sequelize.transaction(async (t) => {
+      await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+        replacements: { userId },
+        transaction: t,
+        type: sequelize.constructor.QueryTypes.RAW,
+      });
+      return Folder.scope({ method: ['forUser', userId] }).findAll({
+        order: [['name', 'ASC']],
+        transaction: t,
+      });
     });
     res.json({ folders });
   } catch (err) {
@@ -69,9 +79,14 @@ router.post('/', async (req, res, next) => {
     }
 
     const trimmedName = rawName.trim();
-    const folder = await Folder.create({
-      user_id: req.session.userId,
-      name: trimmedName,
+    const userId = req.session.userId;
+    const folder = await sequelize.transaction(async (t) => {
+      await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+        replacements: { userId },
+        transaction: t,
+        type: sequelize.constructor.QueryTypes.RAW,
+      });
+      return Folder.create({ user_id: userId, name: trimmedName }, { transaction: t });
     });
 
     res.status(201).json({ folder });
@@ -116,8 +131,16 @@ router.put('/:id', ownershipGuard('Folder', 'id'), async (req, res, next) => {
       return res.status(400).json({ error: 'VALIDATION_ERROR' });
     }
 
+    const userId = req.session.userId;
     req.resource.name = rawName.trim();
-    await req.resource.save();
+    await sequelize.transaction(async (t) => {
+      await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+        replacements: { userId },
+        transaction: t,
+        type: sequelize.constructor.QueryTypes.RAW,
+      });
+      await req.resource.save({ transaction: t });
+    });
 
     res.json({ folder: req.resource });
   } catch (err) {
@@ -140,7 +163,15 @@ router.put('/:id', ownershipGuard('Folder', 'id'), async (req, res, next) => {
  */
 router.delete('/:id', ownershipGuard('Folder', 'id'), async (req, res, next) => {
   try {
-    await req.resource.destroy();
+    const userId = req.session.userId;
+    await sequelize.transaction(async (t) => {
+      await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+        replacements: { userId },
+        transaction: t,
+        type: sequelize.constructor.QueryTypes.RAW,
+      });
+      await req.resource.destroy({ transaction: t });
+    });
     res.status(204).send();
   } catch (err) {
     next(err);

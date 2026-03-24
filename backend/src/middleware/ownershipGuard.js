@@ -33,6 +33,9 @@
 
 'use strict';
 
+const sequelize = require('../config/database');
+const NULL_UUID = '00000000-0000-0000-0000-000000000000';
+
 /**
  * UUID v4 format regex. Used to reject malformed resource IDs before they
  * reach Sequelize's findByPk, which can throw a database cast error on
@@ -72,7 +75,15 @@ function ownershipGuard(modelName, paramName) {
         return sendNotFound(res);
       }
 
-      const resource = await Model.findByPk(resourceId);
+      const userId = req.session?.userId || NULL_UUID;
+      const resource = await sequelize.transaction(async (t) => {
+        await sequelize.query('SET LOCAL app.current_user_id = :userId', {
+          replacements: { userId },
+          transaction: t,
+          type: sequelize.constructor.QueryTypes.RAW,
+        });
+        return Model.findByPk(resourceId, { transaction: t });
+      });
 
       if (!resource) {
         return sendNotFound(res);
