@@ -145,11 +145,15 @@ describe('TASK-014: Full-text search (AC-1 to AC-10)', () => {
     const { cookie, userId } = await registerUser();
     await createNoteViaApi(cookie, 'Index test note', 'PostgreSQL GIN index.');
 
-    // EXPLAIN the query to verify the index is used.
-    // We call sequelize.query directly — this is an infrastructure verification.
+    // EXPLAIN the query to verify the GIN index is usable.
+    // On small tables PostgreSQL's planner may choose a sequential scan because
+    // it is cheaper than an index lookup.  Temporarily disable sequential scans
+    // so the planner is forced to use the index if it exists, which is what this
+    // acceptance criterion actually verifies.
     const sanitizedQuery = 'index:*';
     const [explainRows] = await sequelize.query(
-      `EXPLAIN SELECT id FROM notes,
+      `SET LOCAL enable_seqscan = OFF;
+       EXPLAIN SELECT id FROM notes,
          to_tsquery('english', :q) AS query
        WHERE user_id = :userId AND search_vector @@ query`,
       { replacements: { q: sanitizedQuery, userId } }

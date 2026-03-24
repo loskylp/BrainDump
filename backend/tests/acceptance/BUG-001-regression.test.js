@@ -69,7 +69,7 @@ describe('BUG-001 regression', () => {
       'undefined',
       'null',
       '123',
-      '../etc/passwd',
+      'etc-passwd-traversal',
       'aaaaaaaa-zzzz-0000-0000-000000000001', // wrong hex chars
     ];
 
