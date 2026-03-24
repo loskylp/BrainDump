@@ -33,7 +33,6 @@
 
 'use strict';
 
-const sequelize = require('../config/database');
 const NULL_UUID = '00000000-0000-0000-0000-000000000000';
 
 /**
@@ -75,6 +74,7 @@ function ownershipGuard(modelName, paramName) {
         return sendNotFound(res);
       }
 
+      const sequelize = require('../config/database');
       const userId = req.session?.userId || NULL_UUID;
       const resource = await sequelize.transaction(async (t) => {
         await sequelize.query('SET LOCAL app.current_user_id = :userId', {
