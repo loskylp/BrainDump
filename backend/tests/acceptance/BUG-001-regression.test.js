@@ -140,7 +140,7 @@ describe('BUG-001 regression', () => {
         .send({ folderId: '' });
 
       expect(res.status).toBe(200);
-      expect(res.body.folder_id).toBeNull();
+      expect(res.body.note.folder_id).toBeNull();
     });
 
     it('still accepts folderId: null explicitly', async () => {
@@ -150,7 +150,7 @@ describe('BUG-001 regression', () => {
         .send({ folderId: null });
 
       expect(res.status).toBe(200);
-      expect(res.body.folder_id).toBeNull();
+      expect(res.body.note.folder_id).toBeNull();
     });
   });
 });
