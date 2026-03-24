@@ -71,6 +71,12 @@ jest.mock('../../src/middleware/rlsContext', () =>
   jest.fn((_req, _res, next) => next())
 );
 
+jest.mock('../../src/config/database', () => ({
+  transaction: jest.fn((callback) => callback({})),
+  query: jest.fn().mockResolvedValue([]),
+  constructor: { QueryTypes: { RAW: 'RAW' } },
+}));
+
 /**
  * Mock ownershipGuard factory.
  * Returns middleware that reads guardBehaviour on each request so tests can
@@ -251,10 +257,10 @@ describe('Folder routes (TASK-017)', () => {
         .post('/api/folders')
         .send({ name: '  My Folder  ' });
 
-      expect(Folder.create).toHaveBeenCalledWith({
-        user_id: USER_ID,
-        name: 'My Folder',
-      });
+      expect(Folder.create).toHaveBeenCalledWith(
+        { user_id: USER_ID, name: 'My Folder' },
+        expect.objectContaining({ transaction: expect.anything() })
+      );
     });
 
     it('returns 400 with VALIDATION_ERROR when name is missing', async () => {

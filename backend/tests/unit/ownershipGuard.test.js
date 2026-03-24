@@ -72,6 +72,12 @@ jest.mock('../../src/models', () => ({
   NoteVersion: null,
 }));
 
+jest.mock('../../src/config/database', () => ({
+  transaction: jest.fn((callback) => callback({})),
+  query: jest.fn().mockResolvedValue([]),
+  constructor: { QueryTypes: { RAW: 'RAW' } },
+}));
+
 const models = require('../../src/models');
 
 // ---------------------------------------------------------------------------
@@ -139,7 +145,7 @@ describe('ownershipGuard(modelName, paramName)', () => {
 
       await middleware(req, res, next);
 
-      expect(models.Note.findByPk).toHaveBeenCalledWith(NOTE_ID);
+      expect(models.Note.findByPk).toHaveBeenCalledWith(NOTE_ID, expect.objectContaining({ transaction: expect.anything() }));
     });
   });
 
@@ -245,7 +251,7 @@ describe('ownershipGuard(modelName, paramName)', () => {
 
       await middleware(req, res, next);
 
-      expect(models.Folder.findByPk).toHaveBeenCalledWith(FOLDER_ID);
+      expect(models.Folder.findByPk).toHaveBeenCalledWith(FOLDER_ID, expect.objectContaining({ transaction: expect.anything() }));
       expect(next).toHaveBeenCalledWith();
     });
   });
@@ -266,7 +272,7 @@ describe('ownershipGuard(modelName, paramName)', () => {
 
       await middleware(req, res, next);
 
-      expect(models.NoteVersion.findByPk).toHaveBeenCalledWith(VERSION_ID);
+      expect(models.NoteVersion.findByPk).toHaveBeenCalledWith(VERSION_ID, expect.objectContaining({ transaction: expect.anything() }));
       expect(next).toHaveBeenCalledWith();
     });
   });
@@ -327,7 +333,7 @@ describe('ownershipGuard(modelName, paramName)', () => {
 
       await middleware(req, res, next);
 
-      expect(models.Note.findByPk).toHaveBeenCalledWith(NOTE_ID);
+      expect(models.Note.findByPk).toHaveBeenCalledWith(NOTE_ID, expect.objectContaining({ transaction: expect.anything() }));
       expect(next).toHaveBeenCalled();
     });
   });
