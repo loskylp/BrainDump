@@ -1,8 +1,8 @@
 # Project State
 **Manifest version:** v3 | **Profile:** Commercial
-**Current phase:** GO-LIVE COMPLETE
-**Current cycle:** 3 (CLOSED)
-**Last updated:** 2026-03-22 (Go-Live gate APPROVED by Nexus. v1.0.0 deployed to production at https://braindump.nxlabs.cc. Project delivered.)
+**Current phase:** HOTFIX -- BUG-001
+**Current cycle:** 3 (CLOSED) | **Hotfix:** BUG-001 (IN PROGRESS)
+**Last updated:** 2026-03-24 (BUG-001 hotfix: Builder fixes applied, Verifier regression tests PASS. Awaiting commit, CI, deploy to production, Nexus sign-off.)
 
 ---
 
@@ -48,9 +48,19 @@ TASK-024 verification summary: Commits 39b7dc1, c9d19dc, 3a6991f, 1238fad. CI ru
 
 ## Active Work
 
-**Agent in control:** None (project delivered)
-**Current task:** None
-**Waiting for:** Nothing -- Go-Live complete
+**Agent in control:** Orchestrator (hotfix complete, awaiting Nexus decision on commit/deploy)
+**Current task:** BUG-001 hotfix
+**Waiting for:** Nexus decision: commit and deploy to production
+
+**Hotfix BUG-001 status:**
+- Builder: COMPLETE -- two fixes applied
+  1. `ownershipGuard.js`: UUID format validation before findByPk (malformed IDs return 404 instead of 500)
+  2. `noteService.js` updateNote: empty-string folderId normalised to null (matching createNote pattern)
+- Verifier: PASS -- 308/308 unit tests passing (was 307). 10 new regression tests added:
+  - 9 tests in `ownershipGuard.test.js` (malformed UUID rejection, missing param, valid UUID passthrough)
+  - 1 test in `noteService.updateNote.test.js` (empty-string folderId normalisation)
+  - 1 acceptance test file `BUG-001-regression.test.js` (requires DB -- not runnable locally, will run in CI)
+- Remaining hotfix steps: commit, push, CI green, deploy to production, Nexus sign-off
 
 **Production:**
 - URL: https://braindump.nxlabs.cc

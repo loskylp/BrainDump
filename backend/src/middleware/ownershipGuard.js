@@ -34,6 +34,13 @@
 'use strict';
 
 /**
+ * UUID v4 format regex. Used to reject malformed resource IDs before they
+ * reach Sequelize's findByPk, which can throw a database cast error on
+ * non-UUID strings (BUG-001).
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
  * Sends a 404 Not Found response. Used for both "does not exist" and
  * "belongs to another user" cases to prevent resource enumeration (ADR-006).
  *
@@ -56,6 +63,14 @@ function ownershipGuard(modelName, paramName) {
       const models = require('../models');
       const Model = models[modelName];
       const resourceId = req.params[paramName];
+
+      // BUG-001: Reject malformed IDs before they reach the database.
+      // Without this check, non-UUID strings (e.g. "undefined", "null",
+      // arbitrary text) cause a Sequelize/Postgres cast error (500) instead
+      // of the expected 404.
+      if (!resourceId || !UUID_RE.test(resourceId)) {
+        return sendNotFound(res);
+      }
 
       const resource = await Model.findByPk(resourceId);
 

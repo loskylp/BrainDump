@@ -338,6 +338,16 @@ describe('noteService.updateNote (TASK-009)', () => {
       expect(Folder.findOne).not.toHaveBeenCalled();
     });
 
+    it('normalises empty-string folderId to null and does not call Folder.findOne (BUG-001)', async () => {
+      const note = makeSaveableNote({ folder_id: FOLDER_ID });
+      Note.findOne.mockResolvedValue(note);
+
+      await updateNote(NOTE_ID, USER_ID, { folderId: '' });
+
+      expect(Folder.findOne).not.toHaveBeenCalled();
+      expect(note.folder_id).toBeNull();
+    });
+
     it('does not call Folder.findOne when folderId is not present in updates', async () => {
       await updateNote(NOTE_ID, USER_ID, { title: 'No folder change' });
 

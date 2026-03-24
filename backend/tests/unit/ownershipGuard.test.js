@@ -271,6 +271,67 @@ describe('ownershipGuard(modelName, paramName)', () => {
     });
   });
 
+  describe('BUG-001: UUID format validation', () => {
+    const malformedIds = [
+      'not-a-uuid',
+      'undefined',
+      'null',
+      '123',
+      '../etc/passwd',
+      'aaaaaaaa-zzzz-0000-0000-000000000001',
+      '',
+    ];
+
+    it.each(malformedIds)(
+      'returns 404 for malformed ID "%s" without calling findByPk',
+      async (badId) => {
+        const resource = { id: NOTE_ID, user_id: USER_A };
+        models.Note = mockModel(resource);
+
+        const middleware = ownershipGuard('Note', 'id');
+        const req = mockReq(USER_A, badId);
+        const res = mockRes();
+        const next = jest.fn();
+
+        await middleware(req, res, next);
+
+        expect(res._status).toBe(404);
+        expect(res._body).toEqual({ error: 'Not found' });
+        expect(next).not.toHaveBeenCalled();
+        expect(models.Note.findByPk).not.toHaveBeenCalled();
+      }
+    );
+
+    it('returns 404 when param is undefined (missing param)', async () => {
+      models.Note = mockModel(null);
+
+      const middleware = ownershipGuard('Note', 'id');
+      const req = { session: { userId: USER_A }, params: {} };
+      const res = mockRes();
+      const next = jest.fn();
+
+      await middleware(req, res, next);
+
+      expect(res._status).toBe(404);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('accepts a valid UUID and proceeds to findByPk', async () => {
+      const resource = { id: NOTE_ID, user_id: USER_A };
+      models.Note = mockModel(resource);
+
+      const middleware = ownershipGuard('Note', 'id');
+      const req = mockReq(USER_A, NOTE_ID);
+      const res = mockRes();
+      const next = jest.fn();
+
+      await middleware(req, res, next);
+
+      expect(models.Note.findByPk).toHaveBeenCalledWith(NOTE_ID);
+      expect(next).toHaveBeenCalled();
+    });
+  });
+
   describe('error propagation', () => {
     it('calls next(err) when findByPk throws', async () => {
       const dbError = new Error('DB connection lost');

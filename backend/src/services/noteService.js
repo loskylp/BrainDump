@@ -165,6 +165,13 @@ async function updateNote(noteId, userId, updates) {
       throw new Error('NOT_FOUND');
     }
 
+    // BUG-001: Normalize empty-string folderId to null, matching createNote
+    // behaviour. Without this, an empty string bypasses the null check below
+    // and hits the DB as an invalid FK value.
+    if (Object.prototype.hasOwnProperty.call(updates, 'folderId') && !updates.folderId) {
+      updates.folderId = null;
+    }
+
     // SEC-013: Validate folder ownership before assigning folderId.
     // The DB FK constraint alone does not enforce user isolation — it only
     // verifies the folder UUID exists, regardless of which user owns it.
