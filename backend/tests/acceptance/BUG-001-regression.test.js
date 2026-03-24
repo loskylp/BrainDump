@@ -130,7 +130,7 @@ describe('BUG-001 regression', () => {
         .send({ title: 'BUG-001 test note' })
         .expect(201);
 
-      noteId = res.body.id;
+      noteId = res.body.note.id;
     });
 
     it('accepts folderId: "" and sets folder_id to null (not 500)', async () => {
